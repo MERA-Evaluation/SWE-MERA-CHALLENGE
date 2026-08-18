@@ -1,0 +1,14 @@
+diff --git a/src/Fixer/Casing/ConstantCaseFixer.php b/src/Fixer/Casing/ConstantCaseFixer.php
+index 9c1968aee..9f4dbfee0 100644
+--- a/src/Fixer/Casing/ConstantCaseFixer.php
++++ b/src/Fixer/Casing/ConstantCaseFixer.php
+@@ -116,7 +116,7 @@ protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
+             }
+ 
+             $nextIndex = $tokens->getNextMeaningfulToken($index);
+-            if ($tokens[$nextIndex]->isGivenKind(T_PAAMAYIM_NEKUDOTAYIM) || $tokens[$nextIndex]->equalsAny(['='], false)) {
++            if ($tokens[$nextIndex]->isGivenKind([T_PAAMAYIM_NEKUDOTAYIM, T_NS_SEPARATOR]) || $tokens[$nextIndex]->equalsAny(['='], false)) {
+                 continue;
+             }
+ 
+

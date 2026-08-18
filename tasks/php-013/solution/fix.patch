@@ -1,0 +1,86 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 224916a..97c6683 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -27,7 +27,7 @@ Please also have a look at our
+   `getPropertyName()` (#1506)
+ - `Selector` is now represented as a sequence of `Selector\Component` objects
+   which can be accessed via `getComponents()`, manipulated individually, or set
+-  via `setComponents()` (#1478, #1486, #1487, #1488, #1494, #1496)
++  via `setComponents()` (#1478, #1486, #1487, #1488, #1494, #1496, #1536)
+ - `Selector::setSelector()` and `Selector` constructor will now throw exception
+   upon provision of an invalid selectior (#1498, #1502)
+ - Clean up extra whitespace in CSS selector (#1398)
+diff --git a/src/Property/Selector/CompoundSelector.php b/src/Property/Selector/CompoundSelector.php
+index 4e0b852..1e6fa54 100644
+--- a/src/Property/Selector/CompoundSelector.php
++++ b/src/Property/Selector/CompoundSelector.php
+@@ -27,6 +27,8 @@ class CompoundSelector implements Component
+         '"',
+         '(',
+         ')',
++        '[',
++        ']',
+         ',',
+         ' ',
+         "\t",
+@@ -46,7 +48,7 @@ class CompoundSelector implements Component
+             (?:
+                 (?:
+                     # any sequence of valid unescaped characters, except quotes
+-                    [a-zA-Z0-9\\x{00A0}-\\x{FFFF}_^$|*=\\[\\]()\\-\\.:#,\\s]++
++                    [a-zA-Z0-9\\x{00A0}-\\x{FFFF}_^$|*~=\\[\\]()\\-\\.:#,\\s]++
+                     |
+                     # one or more escaped characters
+                     (?:\\\\.)++
+@@ -100,6 +102,7 @@ class CompoundSelector implements Component
+         $selectorParts = [];
+         $stringWrapperCharacter = null;
+         $functionNestingLevel = 0;
++        $isWithinAttribute = false;
+ 
+         while (true) {
+             $selectorParts[] = $parserState->consumeUntil(self::PARSER_STOP_CHARACTERS, false, false, $comments);
+@@ -140,6 +143,32 @@ class CompoundSelector implements Component
+                         --$functionNestingLevel;
+                     }
+                     break;
++                case '[':
++                    if (!\is_string($stringWrapperCharacter)) {
++                        if ($isWithinAttribute) {
++                            throw new UnexpectedTokenException(
++                                'anything but',
++                                '[',
++                                'literal',
++                                $parserState->currentLine()
++                            );
++                        }
++                        $isWithinAttribute = true;
++                    }
++                    break;
++                case ']':
++                    if (!\is_string($stringWrapperCharacter)) {
++                        if (!$isWithinAttribute) {
++                            throw new UnexpectedTokenException(
++                                'anything but',
++                                ']',
++                                'literal',
++                                $parserState->currentLine()
++                            );
++                        }
++                        $isWithinAttribute = false;
++                    }
++                    break;
+                 case '{':
+                     // The fallthrough is intentional.
+                 case '}':
+@@ -162,7 +191,7 @@ class CompoundSelector implements Component
+                 case '+':
+                     // The fallthrough is intentional.
+                 case '~':
+-                    if (!\is_string($stringWrapperCharacter) && $functionNestingLevel === 0) {
++                    if (!\is_string($stringWrapperCharacter) && $functionNestingLevel === 0 && !$isWithinAttribute) {
+                         break 2;
+                     }
+                     break;
+

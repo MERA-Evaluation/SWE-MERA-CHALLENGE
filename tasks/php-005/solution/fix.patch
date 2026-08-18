@@ -1,0 +1,26 @@
+diff --git a/.github/workflows/lint.yml b/.github/workflows/lint.yml
+index 9ec8ca1..da26de5 100644
+--- a/.github/workflows/lint.yml
++++ b/.github/workflows/lint.yml
+@@ -36,3 +36,7 @@ jobs:
+       - name: "Lint PHP files"
+         run: |
+           parallel-lint . --checkstyle --exclude vendor --show-deprecated | cs2pr
++
++      - name: "Validate conforming class autoloading"
++        run: |
++          composer dump-autoload --no-dev --optimize --strict-psr --strict-ambiguous
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 5d692d9..0605a4a 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+ 
+ ## [Unreleased]
++### Added
++- Add lint check for class autoloading PSR compliance ([#845](https://github.com/jsonrainbow/json-schema/pull/845))
+ 
+ ## [6.5.2] - 2025-09-09
+ ### Fixed
+

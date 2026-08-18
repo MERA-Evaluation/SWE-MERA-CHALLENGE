@@ -1,0 +1,221 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 4d83ff170..fc4304f16 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org). Thia is a
+ ### Added
+ 
+ - Option to display numbers with less precision. [Issue #4626](https://github.com/PHPOffice/PhpSpreadsheet/issues/4626) [PR #4640](https://github.com/PHPOffice/PhpSpreadsheet/pull/4640)
++- Offer Tcpdf Interface which throws exception rather than die. [PR #4666](https://github.com/PHPOffice/PhpSpreadsheet/pull/4666)
+ 
+ ### Removed
+ 
+@@ -39,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org). Thia is a
+ - Use prefix _xlfn for BASE function. [Issue #4638](https://github.com/PHPOffice/PhpSpreadsheet/issues/4638) [PR #4641](https://github.com/PHPOffice/PhpSpreadsheet/pull/4641)
+ - Warning messages with corrupt Xls file. [Issue #4647](https://github.com/PHPOffice/PhpSpreadsheet/issues/4647) [PR #4648](https://github.com/PHPOffice/PhpSpreadsheet/pull/4648)
+ - Additional support for union and intersection. [PR #4596](https://github.com/PHPOffice/PhpSpreadsheet/pull/4596)
++- Missing array keys x,o,v for Xml Reader. [Issue #4668](https://github.com/PHPOffice/PhpSpreadsheet/issues/4668) [PR #4669](https://github.com/PHPOffice/PhpSpreadsheet/pull/4669)
++- Missing array key x for Xlsx Reader VML. [Issue #4505](https://github.com/PHPOffice/PhpSpreadsheet/issues/4505) [PR #4676](https://github.com/PHPOffice/PhpSpreadsheet/pull/4676)
++- Better support for Style Alignment Read Order. [Issue #850](https://github.com/PHPOffice/PhpSpreadsheet/issues/850) [PR #4655](https://github.com/PHPOffice/PhpSpreadsheet/pull/4655)
+ 
+ ## 2025-09-03 - 5.1.0
+ 
+diff --git a/src/PhpSpreadsheet/Reader/Html.php b/src/PhpSpreadsheet/Reader/Html.php
+index b57d6c130..579f3892d 100644
+--- a/src/PhpSpreadsheet/Reader/Html.php
++++ b/src/PhpSpreadsheet/Reader/Html.php
+@@ -18,6 +18,7 @@ use PhpOffice\PhpSpreadsheet\Helper\Html as HelperHtml;
+ use PhpOffice\PhpSpreadsheet\Reader\Security\XmlScanner;
+ use PhpOffice\PhpSpreadsheet\Shared\StringHelper;
+ use PhpOffice\PhpSpreadsheet\Spreadsheet;
++use PhpOffice\PhpSpreadsheet\Style\Alignment;
+ use PhpOffice\PhpSpreadsheet\Style\Border;
+ use PhpOffice\PhpSpreadsheet\Style\Color;
+ use PhpOffice\PhpSpreadsheet\Style\Fill;
+@@ -1014,6 +1015,17 @@ class Html extends BaseReader
+ 
+                     break;
+ 
++                case 'direction':
++                    if ($styleValue === 'rtl') {
++                        $cellStyle->getAlignment()
++                            ->setReadOrder(Alignment::READORDER_RTL);
++                    } elseif ($styleValue === 'ltr') {
++                        $cellStyle->getAlignment()
++                            ->setReadOrder(Alignment::READORDER_LTR);
++                    }
++
++                    break;
++
+                 case 'font-weight':
+                     if ($styleValue === 'bold' || $styleValue >= 500) {
+                         $cellStyle->getFont()->setBold(true);
+@@ -1083,8 +1095,11 @@ class Html extends BaseReader
+                     break;
+ 
+                 case 'text-indent':
++                    $indentDimension = new CssDimension($styleValueString);
++                    $indent = $indentDimension
++                        ->toUnit(CssDimension::UOM_PIXELS);
+                     $cellStyle->getAlignment()->setIndent(
+-                        (int) str_replace(['px'], '', $styleValueString)
++                        (int) ($indent / Alignment::INDENT_UNITS_TO_PIXELS)
+                     );
+ 
+                     break;
+diff --git a/src/PhpSpreadsheet/Reader/Xls.php b/src/PhpSpreadsheet/Reader/Xls.php
+index 97c481daa..3d4cb5e5c 100644
+--- a/src/PhpSpreadsheet/Reader/Xls.php
++++ b/src/PhpSpreadsheet/Reader/Xls.php
+@@ -1254,6 +1254,8 @@ class Xls extends XlsBase
+ 
+                         break;
+                 }
++                $readOrder = (0xC0 & ord($recordData[8])) >> 6;
++                $objStyle->getAlignment()->setReadOrder($readOrder);
+ 
+                 // offset:  9; size: 1; Flags used for attribute groups
+ 
+diff --git a/src/PhpSpreadsheet/Reader/Xml/Style/Alignment.php b/src/PhpSpreadsheet/Reader/Xml/Style/Alignment.php
+index 657decfff..b4afcdec4 100644
+--- a/src/PhpSpreadsheet/Reader/Xml/Style/Alignment.php
++++ b/src/PhpSpreadsheet/Reader/Xml/Style/Alignment.php
+@@ -54,6 +54,14 @@ class Alignment extends StyleBase
+                 case 'Indent':
+                     $style['alignment']['indent'] = $styleAttributeValue;
+ 
++                    break;
++                case 'ReadingOrder':
++                    if ($styleAttributeValue === 'RightToLeft') {
++                        $style['alignment']['readOrder'] = AlignmentStyles::READORDER_RTL;
++                    } elseif ($styleAttributeValue === 'LeftToRight') {
++                        $style['alignment']['readOrder'] = AlignmentStyles::READORDER_LTR;
++                    }
++
+                     break;
+             }
+         }
+diff --git a/src/PhpSpreadsheet/Style/Alignment.php b/src/PhpSpreadsheet/Style/Alignment.php
+index d5c42c273..6ff44e3ef 100644
+--- a/src/PhpSpreadsheet/Style/Alignment.php
++++ b/src/PhpSpreadsheet/Style/Alignment.php
+@@ -92,6 +92,8 @@ class Alignment extends Supervisor
+     const TEXTROTATION_STACK_EXCEL = 255;
+     const TEXTROTATION_STACK_PHPSPREADSHEET = -165; // 90 - 255
+ 
++    public const INDENT_UNITS_TO_PIXELS = 9;
++
+     /**
+      * Horizontal alignment.
+      */
+diff --git a/src/PhpSpreadsheet/Writer/Html.php b/src/PhpSpreadsheet/Writer/Html.php
+index 27849bf37..ecf79d806 100644
+--- a/src/PhpSpreadsheet/Writer/Html.php
++++ b/src/PhpSpreadsheet/Writer/Html.php
+@@ -1115,7 +1115,12 @@ class Html extends BaseWriter
+         if ($textAlign) {
+             $css['text-align'] = $textAlign;
+             if (in_array($textAlign, ['left', 'right'])) {
+-                $css['padding-' . $textAlign] = (string) ((int) $alignment->getIndent() * 9) . 'px';
++                $css['padding-' . $textAlign] = (string) ($alignment->getIndent() * Alignment::INDENT_UNITS_TO_PIXELS) . 'px';
++            }
++        } else {
++            $indent = $alignment->getIndent();
++            if ($indent !== 0) {
++                $css['text-indent'] = (string) ($alignment->getIndent() * Alignment::INDENT_UNITS_TO_PIXELS) . 'px';
+             }
+         }
+         $rotation = $alignment->getTextRotation();
+@@ -1126,6 +1131,12 @@ class Html extends BaseWriter
+                 $css['transform'] = "rotate({$rotation}deg)";
+             }
+         }
++        $direction = $alignment->getReadOrder();
++        if ($direction === Alignment::READORDER_LTR) {
++            $css['direction'] = 'ltr';
++        } elseif ($direction === Alignment::READORDER_RTL) {
++            $css['direction'] = 'rtl';
++        }
+ 
+         return $css;
+     }
+@@ -1516,7 +1527,6 @@ class Html extends BaseWriter
+     /** @param string|string[] $cssClass */
+     private function generateRowCellData(Worksheet $worksheet, null|Cell|string $cell, array|string &$cssClass): string
+     {
+-        $cellData = '&nbsp;';
+         if ($cell instanceof Cell) {
+             $cellData = '';
+             // Don't know what this does, and no test cases.
+@@ -1565,13 +1575,21 @@ class Html extends BaseWriter
+                 }
+             }
+         } else {
++            $cellData = "$cell";
+             // Use default borders for empty cell
+             if (is_string($cssClass)) {
+                 $cssClass .= ' style0';
+             }
+         }
++        /*
++         * Browsers may remove an entirely empty row.
++         * An interesting option is to leave an empty cell empty using css.
++         * td:empty::after{content: "\00a0";}
++         * This works well in modern browsers.
++         * Alas, none of our Pdf writers can handle it.
++         */
+ 
+-        return $cellData;
++        return (trim($cellData) === '') ? '&nbsp;' : $cellData;
+     }
+ 
+     private function generateRowIncludeCharts(Worksheet $worksheet, string $coordinate): string
+diff --git a/src/PhpSpreadsheet/Writer/Ods/Cell/Style.php b/src/PhpSpreadsheet/Writer/Ods/Cell/Style.php
+index fdb580498..5c3cf5277 100644
+--- a/src/PhpSpreadsheet/Writer/Ods/Cell/Style.php
++++ b/src/PhpSpreadsheet/Writer/Ods/Cell/Style.php
+@@ -151,6 +151,7 @@ class Style
+         $vAlign = $style->getAlignment()->getVertical();
+         $wrap = $style->getAlignment()->getWrapText();
+         $indent = $style->getAlignment()->getIndent();
++        $readOrder = $style->getAlignment()->getReadOrder();
+ 
+         $this->writer->startElement('style:table-cell-properties');
+         if (!empty($vAlign) || $wrap) {
+@@ -172,7 +173,7 @@ class Style
+ 
+         $this->writer->endElement();
+ 
+-        if ($hAlign !== '' || !empty($indent)) {
++        if ($hAlign !== '' || !empty($indent) || $readOrder === Alignment::READORDER_RTL || $readOrder === Alignment::READORDER_LTR) {
+             $this->writer
+                 ->startElement('style:paragraph-properties');
+             if ($hAlign !== '') {
+@@ -182,6 +183,11 @@ class Style
+                 $indentString = sprintf('%.4f', $indent * self::INDENT_TO_INCHES) . 'in';
+                 $this->writer->writeAttribute('fo:margin-left', $indentString);
+             }
++            if ($readOrder === Alignment::READORDER_RTL) {
++                $this->writer->writeAttribute('style:writing-mode', 'rl-tb');
++            } elseif ($readOrder === Alignment::READORDER_LTR) {
++                $this->writer->writeAttribute('style:writing-mode', 'lr-tb');
++            }
+             $this->writer->endElement();
+         }
+     }
+diff --git a/src/PhpSpreadsheet/Writer/Xls/Xf.php b/src/PhpSpreadsheet/Writer/Xls/Xf.php
+index 2ab5a4ebc..bda33ed36 100644
+--- a/src/PhpSpreadsheet/Writer/Xls/Xf.php
++++ b/src/PhpSpreadsheet/Writer/Xls/Xf.php
+@@ -220,8 +220,9 @@ class Xf
+         $header = pack('vv', $record, $length);
+ 
+         //BIFF8 options: identation, shrinkToFit and  text direction
+-        $biff8_options = $this->style->getAlignment()->getIndent();
++        $biff8_options = $this->style->getAlignment()->getIndent() & 15;
+         $biff8_options |= (int) $this->style->getAlignment()->getShrinkToFit() << 4;
++        $biff8_options |= $this->style->getAlignment()->getReadOrder() << 6;
+ 
+         $data = pack('vvvC', $ifnt, $ifmt, $style, $align);
+         $data .= pack('CCC', self::mapTextRotation((int) $this->style->getAlignment()->getTextRotation()), $biff8_options, $used_attrib);
+

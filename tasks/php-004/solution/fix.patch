@@ -1,0 +1,18 @@
+diff --git a/src/Fixer/ControlStructure/NoBreakCommentFixer.php b/src/Fixer/ControlStructure/NoBreakCommentFixer.php
+index 7f683ec16..a83239874 100644
+--- a/src/Fixer/ControlStructure/NoBreakCommentFixer.php
++++ b/src/Fixer/ControlStructure/NoBreakCommentFixer.php
+@@ -330,7 +330,11 @@ private function getStructureEnd(Tokens $tokens, int $position): int
+             }
+         }
+ 
+-        $position = $tokens->getNextMeaningfulToken($position);
++        if ($initialToken->isGivenKind(T_FUNCTION)) {
++            $position = $tokens->getNextTokenOfKind($position, ['{']);
++        } else {
++            $position = $tokens->getNextMeaningfulToken($position);
++        }
+ 
+         if ('{' !== $tokens[$position]->getContent()) {
+             return $tokens->getNextTokenOfKind($position, [';']);
+

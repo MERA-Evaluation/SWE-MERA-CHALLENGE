@@ -1,0 +1,84 @@
+diff --git a/tests/Infrastructure/Config/ConfigTest.php b/tests/Infrastructure/Config/ConfigTest.php
+index 849b168a5..69e12ad9a 100644
+--- a/tests/Infrastructure/Config/ConfigTest.php
++++ b/tests/Infrastructure/Config/ConfigTest.php
+@@ -367,6 +367,51 @@ PHP
+         $this->assertEquals('UCT', $config->GetDefaultTimezone());
+     }
+ 
++    public function testPluginEnvUsesSectionQualifiedNames(): void
++    {
++        putenv('LB_SERVER1_KEY=env-section-qualified');
++        putenv('LB_KEY=legacy-bare-name');
++        putenv('LB_KEY1');
++
++        try {
++            Configuration::Instance()->Register(
++                ROOT_DIR . 'tests/data/test_plugin_config.php',
++                '',
++                TestPluginConfigKeys::CONFIG_ID,
++                false,
++                TestPluginConfigKeys::class
++            );
++            $pluginConfig = Configuration::Instance()->File(TestPluginConfigKeys::CONFIG_ID);
++
++            $this->assertSame('env-section-qualified', $pluginConfig->GetKey(TestPluginConfigKeys::SERVER1_KEY));
++            $this->assertSame('value1', $pluginConfig->GetKey(TestPluginConfigKeys::KEY1));
++        } finally {
++            putenv('LB_SERVER1_KEY');
++            putenv('LB_KEY');
++            putenv('LB_KEY1');
++        }
++    }
++
++    public function testPluginHasEnvUsesSectionQualifiedNames(): void
++    {
++        putenv('LB_SERVER2_KEY=value-from-env');
++        putenv('LB_KEY1');
++
++        try {
++            $this->assertTrue(TestPluginConfigKeys::hasEnv(TestPluginConfigKeys::SERVER2_KEY));
++            $this->assertFalse(TestPluginConfigKeys::hasEnv(TestPluginConfigKeys::KEY1));
++        } finally {
++            putenv('LB_SERVER2_KEY');
++            putenv('LB_KEY1');
++        }
++    }
++
++    public function testConfigKeysMetaEnvKeyForConfigUsesCanonicalPluginKey(): void
++    {
++        $this->assertSame('LB_SERVER1_KEY', ConfigKeysMeta::envKeyForConfig(TestPluginConfigKeys::SERVER1_KEY));
++        $this->assertSame('LB_KEY1', ConfigKeysMeta::envKeyForConfig(TestPluginConfigKeys::KEY1));
++    }
++
+     // /**
+     //  * Test that the actual config.dist.php loads correctly
+     //  * and all its nested values are accessible
+diff --git a/tests/lib/Config/EnvExampleGeneratorTest.php b/tests/lib/Config/EnvExampleGeneratorTest.php
+index 3338cbf42..38f2a059f 100644
+--- a/tests/lib/Config/EnvExampleGeneratorTest.php
++++ b/tests/lib/Config/EnvExampleGeneratorTest.php
+@@ -23,7 +23,7 @@ class EnvExampleGeneratorTest extends TestBase
+         $content = EnvExampleGenerator::render();
+ 
+         foreach (ConfigKeys::all() as $entry) {
+-            $envKey = ConfigKeysMeta::envKey(configKey: $entry['key']);
++            $envKey = ConfigKeysMeta::envKeyForConfig(config: $entry);
+             $this->assertStringContainsString(
+                 $envKey . '=',
+                 $content,
+@@ -34,11 +34,11 @@ class EnvExampleGeneratorTest extends TestBase
+ 
+     public function testEnvKeyFormatMatchesAbstractConfigKeys(): void
+     {
+-        // Verify our envKey derivation matches the one used at runtime
++        // Verify canonical env keys follow the expected LB_* naming convention
+         foreach (ConfigKeys::all() as $entry) {
+             $key = $entry['key'];
+             $expected = strtoupper('LB_' . preg_replace('/[.\-]+/', '_', $key));
+-            $actual = ConfigKeysMeta::envKey(configKey: $key);
++            $actual = ConfigKeysMeta::envKeyForConfig(config: $entry);
+ 
+             $this->assertSame(
+                 $expected,
+

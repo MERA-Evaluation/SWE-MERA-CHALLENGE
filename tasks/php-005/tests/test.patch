@@ -1,0 +1,27 @@
+diff --git a/tests/Tool/Validator/RelativeReferenceValidatorTest.php b/tests/Tool/Validator/RelativeReferenceValidatorTest.php
+index 2a9b6d6..7b46e23 100644
+--- a/tests/Tool/Validator/RelativeReferenceValidatorTest.php
++++ b/tests/Tool/Validator/RelativeReferenceValidatorTest.php
+@@ -2,7 +2,7 @@
+ 
+ declare(strict_types=1);
+ 
+-namespace Tool\Validator;
++namespace JsonSchema\Tests\Tool\Validator;
+ 
+ use JsonSchema\Tool\Validator\RelativeReferenceValidator;
+ use PHPUnit\Framework\TestCase;
+diff --git a/tests/Tool/Validator/UriValidatorTest.php b/tests/Tool/Validator/UriValidatorTest.php
+index 80a45c8..13e99b8 100644
+--- a/tests/Tool/Validator/UriValidatorTest.php
++++ b/tests/Tool/Validator/UriValidatorTest.php
+@@ -2,7 +2,7 @@
+ 
+ declare(strict_types=1);
+ 
+-namespace Tool\Validator;
++namespace JsonSchema\Tests\Tool\Validator;
+ 
+ use JsonSchema\Tool\Validator\UriValidator;
+ use PHPUnit\Framework\TestCase;
+

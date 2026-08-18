@@ -1,0 +1,33 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 4e22034f..c175fbee 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -8,6 +8,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
+ ### Deprecated
+ ### Removed
+ ### Fixed
++- Fix `SmartSerializer` throwing `JsonException` on JSON with unpaired UTF-16 surrogate escape sequences produced by search highlighting ([#403](https://github.com/opensearch-project/opensearch-php/pull/403))
+ ### Security
+ ### Updated APIs
+ 
+diff --git a/src/OpenSearch/Serializers/SmartSerializer.php b/src/OpenSearch/Serializers/SmartSerializer.php
+index 79f70d08..cf072558 100644
+--- a/src/OpenSearch/Serializers/SmartSerializer.php
++++ b/src/OpenSearch/Serializers/SmartSerializer.php
+@@ -76,6 +76,15 @@ class SmartSerializer implements SerializerInterface
+         try {
+             return json_decode($data, true, 512, JSON_THROW_ON_ERROR);
+         } catch (\JsonException $e) {
++            if ($e->getCode() === JSON_ERROR_UTF16) {
++                $escaped = str_replace('\\', '\\\\', $data);
++                try {
++                    return json_decode($escaped, true, 512, JSON_THROW_ON_ERROR);
++                } catch (\JsonException $e) {
++                    throw new JsonException($e->getCode(), $escaped, $e);
++                }
++            }
++
+             throw new JsonException($e->getCode(), $data, $e);
+         }
+     }
+

@@ -1,0 +1,21 @@
+{
+  "task_id": "py-016",
+  "command_test": "pytest --junit-xml=/testbed/junit.xml",
+  "command_build": "pip install -e .;\npip install pytest pytest-json-report;",
+  "fail_to_pass": [
+    "tests.test_inputmodes::test_input_mode_raw_with_partial_sensitivity",
+    "tests.test_parsers::test_raw_data_accl_msg_scaled",
+    "tests.test_parsers::test_raw_data_imu_msg_scaled"
+  ],
+  "pass_to_pass": [
+    "tests.test_cross_platform::test_tapclient_defined_for_all_platforms",
+    "tests.test_inputmodes::test_input_mode_basic",
+    "tests.test_inputmodes::test_input_mode_raw_scaled",
+    "tests.test_inputmodes::test_input_mode_raw_with_sensitivity",
+    "tests.test_inputmodes::test_input_type_command",
+    "tests.test_parsers::test_mouse_data_msg",
+    "tests.test_parsers::test_raw_data_msg",
+    "tests.test_parsers::test_tap_data_msg"
+  ],
+  "tests_source": "enriched"
+}

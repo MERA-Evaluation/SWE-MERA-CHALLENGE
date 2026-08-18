@@ -1,0 +1,437 @@
+diff --git a/optiland/geometries/base.py b/optiland/geometries/base.py
+index 8b280aa6..25685977 100644
+--- a/optiland/geometries/base.py
++++ b/optiland/geometries/base.py
+@@ -62,6 +62,15 @@ class BaseGeometry(ABC):
+         """
+         # pragma: no cover
+ 
++    @abstractmethod
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        # pragma: no cover
++
+     @abstractmethod
+     def surface_normal(self, rays):
+         """Find the surface normal of the geometry at the given ray positions.
+diff --git a/optiland/geometries/biconic.py b/optiland/geometries/biconic.py
+index e772f225..c79f854e 100644
+--- a/optiland/geometries/biconic.py
++++ b/optiland/geometries/biconic.py
+@@ -174,6 +174,20 @@ class BiconicGeometry(NewtonRaphsonGeometry):
+     def __str__(self) -> str:
+         return "Biconic"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        # Scale radii
++        self.Rx = self.Rx * scale_factor
++        self.Ry = self.Ry * scale_factor
++
++        # Update curvatures
++        self.cx = be.where(be.isinf(self.Rx) | (self.Rx == 0), 0.0, 1.0 / self.Rx)
++        self.cy = be.where(be.isinf(self.Ry) | (self.Ry == 0), 0.0, 1.0 / self.Ry)
++
+     def to_dict(self) -> dict:
+         """Converts the geometry to a dictionary.
+ 
+diff --git a/optiland/geometries/chebyshev.py b/optiland/geometries/chebyshev.py
+index 3c379b45..e25f1ae8 100644
+--- a/optiland/geometries/chebyshev.py
++++ b/optiland/geometries/chebyshev.py
+@@ -100,6 +100,17 @@ class ChebyshevPolynomialGeometry(NewtonRaphsonGeometry):
+     def __str__(self):
+         return "Chebyshev Polynomial"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        self.norm_x = self.norm_x * scale_factor
++        self.norm_y = self.norm_y * scale_factor
++        self.coefficients = self.coefficients * scale_factor
++
+     def sag(self, x=0, y=0):
+         """Calculates the sag of the Chebyshev polynomial surface at the given
+         coordinates.
+diff --git a/optiland/geometries/even_asphere.py b/optiland/geometries/even_asphere.py
+index e34fe22f..b789b6e1 100644
+--- a/optiland/geometries/even_asphere.py
++++ b/optiland/geometries/even_asphere.py
+@@ -72,13 +72,24 @@ class EvenAsphere(NewtonRaphsonGeometry):
+         if coefficients is None:
+             coefficients = []
+         super().__init__(coordinate_system, radius, conic, tol, max_iter)
+-        self.coefficients = coefficients
++        self.coefficients = list(coefficients)
+         self.is_symmetric = True
+         self.order = 2  # used for optimization scaling
+ 
+     def __str__(self):
+         return "Even Asphere"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        for i in range(len(self.coefficients)):
++            # C_i' = C_i * s^(1 - 2(i+1))
++            self.coefficients[i] *= scale_factor ** (1 - 2 * (i + 1))
++
+     def sag(self, x=0, y=0):
+         """Calculates the sag of the asphere at the given coordinates.
+ 
+diff --git a/optiland/geometries/forbes/geometry.py b/optiland/geometries/forbes/geometry.py
+index 6bba675a..b365663e 100644
+--- a/optiland/geometries/forbes/geometry.py
++++ b/optiland/geometries/forbes/geometry.py
+@@ -219,11 +219,25 @@ class ForbesQbfsGeometry(ForbesGeometryBase):
+                 k: be.array(v) for k, v in (self.surface_config.terms or {}).items()
+             }
+         else:
+-            self.radial_terms = self.surface_config.terms or {}
++            self.radial_terms = (self.surface_config.terms or {}).copy()
+ 
+         self.norm_radius = be.array(self.surface_config.norm_radius)
+         self.is_symmetric = True
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        self.surface_config.radius = self.radius
++        self.surface_config.norm_radius *= scale_factor
++        self.norm_radius = be.array(self.surface_config.norm_radius)
++
++        for k in self.radial_terms:
++            self.radial_terms[k] = self.radial_terms[k] * scale_factor
++
+     def _prepare_coeffs(self):
+         """Prepares the internal coefficient lists from the radial_terms dictionary."""
+         if not self.radial_terms:
+@@ -421,12 +435,29 @@ class ForbesQ2dGeometry(ForbesGeometryBase):
+                 k: be.array(v) for k, v in (self.surface_config.terms or {}).items()
+             }
+         else:
+-            self.freeform_coeffs = self.surface_config.terms or {}
++            self.freeform_coeffs = (self.surface_config.terms or {}).copy()
+ 
+         self.norm_radius = be.array(self.surface_config.norm_radius)
+         self.cm0_coeffs, self.ams_coeffs, self.bms_coeffs = [], [], []
+         self._prepare_coeffs()
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        self.surface_config.radius = self.radius
++        self.surface_config.norm_radius *= scale_factor
++        self.norm_radius = be.array(self.surface_config.norm_radius)
++
++        for k in self.freeform_coeffs:
++            self.freeform_coeffs[k] = self.freeform_coeffs[k] * scale_factor
++
++        self.c = 1 / self.radius if self.radius != 0 else 0
++        self._prepare_coeffs()
++
+     def _prepare_coeffs(self):
+         """
+         Translates the user-facing Zemax-style `freeform_coeffs` dictionary
+diff --git a/optiland/geometries/grid_sag.py b/optiland/geometries/grid_sag.py
+index fb49df9c..9db65d4c 100644
+--- a/optiland/geometries/grid_sag.py
++++ b/optiland/geometries/grid_sag.py
+@@ -152,6 +152,16 @@ class GridSagGeometry(BaseGeometry):
+         """Flip the geometry by negating the sag values."""
+         self.sag_grid = -self.sag_grid
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        self.x_grid = self.x_grid * scale_factor
++        self.y_grid = self.y_grid * scale_factor
++        self.sag_grid = self.sag_grid * scale_factor
++
+     def to_dict(self):
+         """Convert the geometry to a dictionary."""
+         geometry_dict = super().to_dict()
+diff --git a/optiland/geometries/nurbs/nurbs_geometry.py b/optiland/geometries/nurbs/nurbs_geometry.py
+index d1bb9429..5010dcbe 100644
+--- a/optiland/geometries/nurbs/nurbs_geometry.py
++++ b/optiland/geometries/nurbs/nurbs_geometry.py
+@@ -275,7 +275,28 @@ class NurbsGeometry(BaseGeometry):
+         control points.
+         """
+         self.radius = -self.radius
+-        self.P[2, :, :] = -self.P[2, :, :]
++        if self.P is not None:
++            self.P[2, :, :] = -self.P[2, :, :]
++
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        self.radius = self.radius * scale_factor
++
++        if self.nurbs_norm_x is not None:
++            self.nurbs_norm_x = self.nurbs_norm_x * scale_factor
++
++        if self.nurbs_norm_y is not None:
++            self.nurbs_norm_y = self.nurbs_norm_y * scale_factor
++
++        self.x_center = self.x_center * scale_factor
++        self.y_center = self.y_center * scale_factor
++
++        if self.P is not None:
++            self.P = self.P * scale_factor
+ 
+     def get_value(self, u, v):
+         """Evaluates the coordinates of the surface.
+diff --git a/optiland/geometries/odd_asphere.py b/optiland/geometries/odd_asphere.py
+index 88e2d8de..406b2559 100644
+--- a/optiland/geometries/odd_asphere.py
++++ b/optiland/geometries/odd_asphere.py
+@@ -70,6 +70,19 @@ class OddAsphere(EvenAsphere):
+     def __str__(self):
+         return "Odd Asphere"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        # Skip EvenAsphere.scale as it incorrectly scales coefficients for OddAsphere
++        # Call the next class in MRO after EvenAsphere (NewtonRaphson -> Standard)
++        super(EvenAsphere, self).scale(scale_factor)
++        for i in range(len(self.coefficients)):
++            # C_i' = C_i * s^(1 - (i+1))
++            self.coefficients[i] *= scale_factor ** (1 - (i + 1))
++
+     def sag(self, x=0, y=0):
+         """Calculates the sag of the asphere at the given coordinates.
+ 
+diff --git a/optiland/geometries/plane.py b/optiland/geometries/plane.py
+index cb1f4d31..24bc0649 100644
+--- a/optiland/geometries/plane.py
++++ b/optiland/geometries/plane.py
+@@ -40,6 +40,17 @@ class Plane(BaseGeometry):
+         """
+         pass
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        For a plane, this operation does nothing as its geometry is unchanged
++        by scaling (radius remains infinite).
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        pass
++
+     def sag(self, x=0, y=0):
+         """Calculate the surface sag of the plane geometry.
+ 
+diff --git a/optiland/geometries/plane_grating.py b/optiland/geometries/plane_grating.py
+index 8fe685e6..d6e57045 100644
+--- a/optiland/geometries/plane_grating.py
++++ b/optiland/geometries/plane_grating.py
+@@ -45,6 +45,14 @@ class PlaneGrating(BaseGeometry):
+         """
+         pass
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        self.grating_period = self.grating_period * scale_factor
++
+     def sag(self, x=0, y=0):
+         """Calculate the surface sag of the plane geometry.
+ 
+diff --git a/optiland/geometries/polynomial.py b/optiland/geometries/polynomial.py
+index aa8ed643..c49fe3b2 100644
+--- a/optiland/geometries/polynomial.py
++++ b/optiland/geometries/polynomial.py
+@@ -90,6 +90,18 @@ class PolynomialGeometry(NewtonRaphsonGeometry):
+     def __str__(self):
+         return "Polynomial XY"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        for i in range(len(self.coefficients)):
++            for j in range(len(self.coefficients[i])):
++                # C_ij' = C_ij * s^(1 - (i+j))
++                self.coefficients[i][j] *= scale_factor ** (1 - (i + j))
++
+     def sag(self, x=0, y=0):
+         """Calculates the sag of the polynomial surface at the given coordinates.
+ 
+diff --git a/optiland/geometries/standard.py b/optiland/geometries/standard.py
+index e173d516..83f14d82 100644
+--- a/optiland/geometries/standard.py
++++ b/optiland/geometries/standard.py
+@@ -70,6 +70,14 @@ class StandardGeometry(BaseGeometry):
+         """
+         self.radius = -self.radius
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        self.radius = self.radius * scale_factor
++
+     def sag(self, x=0, y=0):
+         """Calculate the surface sag of the geometry at the given coordinates.
+ 
+diff --git a/optiland/geometries/standard_grating.py b/optiland/geometries/standard_grating.py
+index d610761d..cefb2910 100644
+--- a/optiland/geometries/standard_grating.py
++++ b/optiland/geometries/standard_grating.py
+@@ -74,6 +74,15 @@ class StandardGratingGeometry(BaseGeometry):
+         """
+         self.radius = -self.radius
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        self.radius = self.radius * scale_factor
++        self.grating_period = self.grating_period * scale_factor
++
+     def sag(self, x=0, y=0):
+         """Calculate the surface sag of the geometry at the given coordinates.
+ 
+diff --git a/optiland/geometries/toroidal.py b/optiland/geometries/toroidal.py
+index 1ab2dba0..b6b1bd64 100644
+--- a/optiland/geometries/toroidal.py
++++ b/optiland/geometries/toroidal.py
+@@ -72,7 +72,9 @@ class ToroidalGeometry(NewtonRaphsonGeometry):
+         self.R_yz = radius_y
+         self.k_yz = conic
+ 
+-        self.coeffs_poly_y = be.asarray([] if coeffs_poly_y is None else coeffs_poly_y)
++        self.coeffs_poly_y = be.asarray(
++            [] if coeffs_poly_y is None else list(coeffs_poly_y)
++        )
+ 
+         self.is_symmetric = False
+ 
+@@ -256,6 +258,24 @@ class ToroidalGeometry(NewtonRaphsonGeometry):
+     def __str__(self) -> str:
+         return "Toroidal"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        self.R_rot = self.R_rot * scale_factor
++        self.R_yz = self.R_yz * scale_factor
++
++        self.c_yz = (
++            1.0 / self.R_yz if be.isfinite(self.R_yz) and self.R_yz != 0 else 0.0
++        )
++
++        for i in range(len(self.coeffs_poly_y)):
++            # C_i' = C_i * s^(1 - 2(i+1))
++            self.coeffs_poly_y[i] *= scale_factor ** (1 - 2 * (i + 1))
++
+     def to_dict(self) -> dict:
+         """Converts the geometry to a dictionary.
+ 
+diff --git a/optiland/geometries/zernike.py b/optiland/geometries/zernike.py
+index cb3ad2b0..7f0e6532 100644
+--- a/optiland/geometries/zernike.py
++++ b/optiland/geometries/zernike.py
+@@ -130,6 +130,16 @@ class ZernikePolynomialGeometry(NewtonRaphsonGeometry):
+     def __str__(self) -> str:
+         return "Zernike Polynomial"
+ 
++    def scale(self, scale_factor: float):
++        """Scale the geometry parameters.
++
++        Args:
++            scale_factor (float): The factor by which to scale the geometry.
++        """
++        super().scale(scale_factor)
++        self.norm_radius = self.norm_radius * scale_factor
++        self.coefficients = self.coefficients * scale_factor
++
+     def sag(self, x: NDArray, y: NDArray) -> NDArray:  # type: ignore
+         """Calculate the sag of the Zernike polynomial surface at the given
+         coordinates.
+diff --git a/optiland/optic/optic_updater.py b/optiland/optic/optic_updater.py
+index d3eb4d3b..9739b557 100644
+--- a/optiland/optic/optic_updater.py
++++ b/optiland/optic/optic_updater.py
+@@ -174,22 +174,24 @@ class OpticUpdater:
+ 
+         """
+         num_surfaces = self.optic.surface_group.num_surfaces
+-        radii = self.optic.surface_group.radii
+         thicknesses = [
+             self.optic.surface_group.get_thickness(surf_idx)[0]
+             for surf_idx in range(num_surfaces - 1)
+         ]
+ 
+-        # Scale radii & thicknesses
++        # Scale radii, geometries, and thicknesses
+         for surf_idx in range(num_surfaces):
+-            if not be.isinf(radii[surf_idx]):
+-                self.set_radius(radii[surf_idx] * scale_factor, surf_idx)
++            surface = self.optic.surface_group.surfaces[surf_idx]
++            surface.geometry.scale(scale_factor)
+ 
+             if surf_idx != num_surfaces - 1 and not be.isinf(thicknesses[surf_idx]):
+                 self.set_thickness(thicknesses[surf_idx] * scale_factor, surf_idx)
+ 
+         # Scale aperture, if aperture type is EPD
+-        if self.optic.aperture.ap_type in ["EPD", "float_by_stop_size"]:
++        if self.optic.aperture and self.optic.aperture.ap_type in [
++            "EPD",
++            "float_by_stop_size",
++        ]:
+             self.optic.aperture.value = self.optic.aperture.value * scale_factor
+ 
+         # Scale physical apertures
+

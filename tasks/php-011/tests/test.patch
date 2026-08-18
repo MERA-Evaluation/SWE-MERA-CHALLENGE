@@ -1,0 +1,109 @@
+diff --git a/tests/Fixtures/Assistant.php b/tests/Fixtures/Assistant.php
+index 6d80220..267a4a8 100644
+--- a/tests/Fixtures/Assistant.php
++++ b/tests/Fixtures/Assistant.php
+@@ -26,6 +26,33 @@ function assistantResource(): array
+     ];
+ }
+ 
++/**
++ * @return array<string, mixed>
++ */
++function assistantReasoningModelResource(): array
++{
++    return [
++        'id' => 'asst_SMzoVX8XmCZEg1EbMHoAm8tc',
++        'object' => 'assistant',
++        'created_at' => 1699619403,
++        'name' => 'Math Tutor',
++        'reasoning_effort' => 'high',
++        'description' => null,
++        'model' => 'gpt-o3',
++        'instructions' => 'You are a personal math tutor.',
++        'tools' => [
++            [
++                'type' => 'code_interpreter',
++            ],
++        ],
++        'tool_resources' => null,
++        'metadata' => [],
++        'temperature' => 0.7,
++        'top_p' => 1.0,
++        'response_format' => 'text',
++    ];
++}
++
+ /**
+  * @return array<string, mixed>
+  */
+@@ -217,6 +244,23 @@ function assistantListResource(): array
+     ];
+ }
+ 
++/**
++ * @return array<string, mixed>
++ */
++function assistantReasoningListResource(): array
++{
++    return [
++        'object' => 'list',
++        'data' => [
++            assistantReasoningModelResource(),
++            assistantReasoningModelResource(),
++        ],
++        'first_id' => 'asst_SMzoVX8XmCZEg1EbMHoAm8tc',
++        'last_id' => 'asst_y49lAdZDiaQUxEBR6zrG846Q',
++        'has_more' => true,
++    ];
++}
++
+ /**
+  * @return array<string, mixed>
+  */
+diff --git a/tests/Responses/Assistants/AssistantListResponse.php b/tests/Responses/Assistants/AssistantListResponse.php
+index 8df1717..5becfe1 100644
+--- a/tests/Responses/Assistants/AssistantListResponse.php
++++ b/tests/Responses/Assistants/AssistantListResponse.php
+@@ -15,6 +15,14 @@ test('from', function () {
+         ->meta()->toBeInstanceOf(MetaInformation::class);
+ });
+ 
++test('from reasoning models', function () {
++    $response = AssistantListResponse::from(assistantReasoningListResource(), meta());
++
++    expect($response)
++        ->toBeInstanceOf(AssistantListResponse::class)
++        ->data->each->toBeInstanceOf(AssistantResponse::class);
++});
++
+ test('as array accessible', function () {
+     $response = AssistantListResponse::from(assistantListResource(), meta());
+ 
+diff --git a/tests/Responses/Assistants/AssistantResponse.php b/tests/Responses/Assistants/AssistantResponse.php
+index 23fe5f3..e4a21c7 100644
+--- a/tests/Responses/Assistants/AssistantResponse.php
++++ b/tests/Responses/Assistants/AssistantResponse.php
+@@ -15,6 +15,7 @@ test('from', function () {
+         ->object->toBe('assistant')
+         ->createdAt->toBe(1699619403)
+         ->name->toBe('Math Tutor')
++        ->reasoningEffort->toBeNull()
+         ->description->toBeNull()
+         ->model->toBe('gpt-4')
+         ->instructions->toBe('You are a personal math tutor.')
+@@ -28,6 +29,14 @@ test('from', function () {
+         ->responseFormat->toBe('text');
+ });
+ 
++test('from reasoning model', function () {
++    $result = AssistantResponse::from(assistantReasoningModelResource(), meta());
++
++    expect($result)
++        ->id->toBe('asst_SMzoVX8XmCZEg1EbMHoAm8tc')
++        ->reasoningEffort->toBe('high');
++});
++
+ test('with file search', function () {
+     $result = AssistantResponse::from(assistantWithToolResources(), meta());
+ 
+

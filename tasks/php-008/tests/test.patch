@@ -1,0 +1,51 @@
+diff --git a/tests/Predis/Command/Redis/LPUSHX_Test.php b/tests/Predis/Command/Redis/LPUSHX_Test.php
+index 098f63cf..8fccf768 100644
+--- a/tests/Predis/Command/Redis/LPUSHX_Test.php
++++ b/tests/Predis/Command/Redis/LPUSHX_Test.php
+@@ -50,6 +50,20 @@ class LPUSHX_Test extends PredisCommandTestCase
+         $this->assertSame($expected, $command->getArguments());
+     }
+ 
++    /**
++     * @group disconnected
++     */
++    public function testFilterArgumentsValuesAsSingleArray(): void
++    {
++        $arguments = ['key', ['value1', 'value2', 'value3']];
++        $expected = ['key', 'value1', 'value2', 'value3'];
++
++        $command = $this->getCommand();
++        $command->setArguments($arguments);
++
++        $this->assertSame($expected, $command->getArguments());
++    }
++
+     /**
+      * @group disconnected
+      */
+diff --git a/tests/Predis/Command/Redis/RPUSHX_Test.php b/tests/Predis/Command/Redis/RPUSHX_Test.php
+index 0bfb2dca..d85468eb 100644
+--- a/tests/Predis/Command/Redis/RPUSHX_Test.php
++++ b/tests/Predis/Command/Redis/RPUSHX_Test.php
+@@ -50,6 +50,20 @@ class RPUSHX_Test extends PredisCommandTestCase
+         $this->assertSame($expected, $command->getArguments());
+     }
+ 
++    /**
++     * @group disconnected
++     */
++    public function testFilterArgumentsValuesAsSingleArray(): void
++    {
++        $arguments = ['key', ['value1', 'value2', 'value3']];
++        $expected = ['key', 'value1', 'value2', 'value3'];
++
++        $command = $this->getCommand();
++        $command->setArguments($arguments);
++
++        $this->assertSame($expected, $command->getArguments());
++    }
++
+     /**
+      * @group disconnected
+      */
+

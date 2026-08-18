@@ -1,0 +1,215 @@
+diff --git a/paperbanana/core/config.py b/paperbanana/core/config.py
+index 4fb8a75..35fa59f 100644
+--- a/paperbanana/core/config.py
++++ b/paperbanana/core/config.py
+@@ -93,6 +93,7 @@ class Settings(BaseSettings):
+     google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
+     openrouter_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_API_KEY")
+     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
++    anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
+     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
+     openai_vlm_model: Optional[str] = Field(default=None, alias="OPENAI_VLM_MODEL")
+     openai_image_model: Optional[str] = Field(default=None, alias="OPENAI_IMAGE_MODEL")
+diff --git a/paperbanana/providers/registry.py b/paperbanana/providers/registry.py
+index 7db8182..280f5ac 100644
+--- a/paperbanana/providers/registry.py
++++ b/paperbanana/providers/registry.py
+@@ -33,6 +33,13 @@ _API_KEY_HINTS = {
+         "  2. Set the environment variable:\n\n"
+         "  export OPENAI_API_KEY=your-key-here"
+     ),
++    "ANTHROPIC_API_KEY": (
++        "ANTHROPIC_API_KEY not found.\n\n"
++        "To fix this:\n"
++        "  1. Get an API key at: https://console.anthropic.com/settings/keys\n"
++        "  2. Set the environment variable:\n\n"
++        "  export ANTHROPIC_API_KEY=your-key-here"
++    ),
+     "AWS_CREDENTIALS": (
+         "AWS credentials not found for Bedrock.\n\n"
+         "To fix this, configure one of:\n"
+@@ -111,9 +118,18 @@ class ProviderRegistry:
+                 region=settings.aws_region,
+                 profile=settings.aws_profile,
+             )
++        elif provider == "anthropic":
++            _validate_api_key(settings.anthropic_api_key, "ANTHROPIC_API_KEY")
++            from paperbanana.providers.vlm.anthropic import AnthropicVLM
++
++            return AnthropicVLM(
++                api_key=settings.anthropic_api_key,
++                model=settings.vlm_model,
++            )
+         else:
+             raise ValueError(
+-                f"Unknown VLM provider: {provider}. Available: gemini, openrouter, openai, bedrock"
++                "Unknown VLM provider: "
++                f"{provider}. Available: gemini, openrouter, openai, bedrock, anthropic"
+             )
+ 
+     @staticmethod
+diff --git a/paperbanana/providers/vlm/anthropic.py b/paperbanana/providers/vlm/anthropic.py
+new file mode 100644
+index 0000000..3133e8f
+--- /dev/null
++++ b/paperbanana/providers/vlm/anthropic.py
+@@ -0,0 +1,139 @@
++"""Anthropic Claude VLM provider."""
++
++from __future__ import annotations
++
++from typing import Optional
++
++import structlog
++from PIL import Image
++from tenacity import retry, stop_after_attempt, wait_exponential
++
++from paperbanana.core.utils import image_to_base64
++from paperbanana.providers.base import VLMProvider
++
++logger = structlog.get_logger()
++
++
++class AnthropicVLM(VLMProvider):
++    """VLM provider using the Anthropic Python SDK (async).
++
++    Works with Claude 3.x / 4.x models via the Messages API.
++    """
++
++    def __init__(
++        self,
++        api_key: Optional[str] = None,
++        model: str = "claude-3-5-sonnet-20251023",
++    ):
++        self._api_key = api_key
++        self._model = model
++        self._client = None
++
++    @property
++    def name(self) -> str:
++        return "anthropic"
++
++    @property
++    def model_name(self) -> str:
++        return self._model
++
++    def _get_client(self):
++        """Lazy-init an AsyncAnthropic client."""
++        if self._client is None:
++            try:
++                from anthropic import AsyncAnthropic
++
++                self._client = AsyncAnthropic(api_key=self._api_key)
++            except ImportError:
++                raise ImportError(
++                    "anthropic is required for the Anthropic provider. "
++                    "Install with: pip install 'paperbanana[anthropic]'"
++                )
++        return self._client
++
++    def is_available(self) -> bool:
++        return self._api_key is not None
++
++    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
++    async def generate(
++        self,
++        prompt: str,
++        images: Optional[list[Image.Image]] = None,
++        system_prompt: Optional[str] = None,
++        temperature: float = 1.0,
++        max_tokens: int = 4096,
++        response_format: Optional[str] = None,
++    ) -> str:
++        client = self._get_client()
++
++        content: list[dict] = []
++        if images:
++            for img in images:
++                b64 = image_to_base64(img)
++                content.append(
++                    {
++                        "type": "image",
++                        "source": {
++                            "type": "base64",
++                            "media_type": "image/png",
++                            "data": b64,
++                        },
++                    }
++                )
++
++        content.append({"type": "text", "text": prompt})
++
++        messages = [
++            {
++                "role": "user",
++                "content": content,
++            }
++        ]
++
++        params: dict = {
++            "model": self._model,
++            "max_tokens": max_tokens,
++            "messages": messages,
++            "temperature": temperature,
++        }
++
++        if system_prompt:
++            params["system"] = system_prompt
++
++        if response_format == "json":
++            # Use structured outputs with a permissive JSON schema so callers
++            # receive machine-parseable JSON while retaining flexibility.
++            params["output_config"] = {
++                "format": {
++                    "type": "json_schema",
++                    "schema": {
++                        "type": "object",
++                        "additionalProperties": True,
++                    },
++                }
++            }
++
++        response = await client.messages.create(**params)
++
++        # Anthropic returns a list of content blocks; we concatenate all text blocks.
++        parts: list[str] = []
++        for block in getattr(response, "content", []):
++            # Support both SDK objects and plain dicts in tests.
++            block_type = getattr(block, "type", None)
++            if isinstance(block, dict):
++                block_type = block.get("type")
++            if block_type == "text":
++                text_value = getattr(block, "text", None)
++                if isinstance(block, dict):
++                    text_value = block.get("text", text_value)
++                if text_value:
++                    parts.append(text_value)
++
++        text = "".join(parts)
++
++        logger.debug(
++            "Anthropic response",
++            model=self._model,
++            usage=getattr(response, "usage", None),
++        )
++        return text
+diff --git a/pyproject.toml b/pyproject.toml
+index 145ae8d..9439fa8 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -46,7 +46,13 @@ dependencies = [
+ google = ["google-genai>=1.65"]
+ openai = ["openai>=1.0"]
+ bedrock = ["boto3>=1.34"]
+-all-providers = ["google-genai>=1.65", "openai>=1.0", "boto3>=1.34"]
++anthropic = ["anthropic>=0.83"]
++all-providers = [
++    "google-genai>=1.65",
++    "openai>=1.0",
++    "boto3>=1.34",
++    "anthropic>=0.83",
++]
+ mcp = ["fastmcp>=2.0"]
+ dev = [
+     "pytest>=8.0",
+

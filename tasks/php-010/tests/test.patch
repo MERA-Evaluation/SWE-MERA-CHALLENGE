@@ -1,0 +1,28 @@
+diff --git a/tests/Unit/CSSList/CSSListTest.php b/tests/Unit/CSSList/CSSListTest.php
+index ada176e..523ada0 100644
+--- a/tests/Unit/CSSList/CSSListTest.php
++++ b/tests/Unit/CSSList/CSSListTest.php
+@@ -239,6 +239,22 @@ final class CSSListTest extends TestCase
+         self::assertSame([], $subject->getContents());
+     }
+ 
++    /**
++     * @test
++     */
++    public function removeDeclarationBlockBySelectorRemovesDeclarationBlockWithSelectorsInReverseOrder(): void
++    {
++        $subject = new ConcreteCSSList();
++        $declarationBlock = new DeclarationBlock();
++        $declarationBlock->setSelectors(['html', 'body']);
++        $subject->setContents([$declarationBlock]);
++        self::assertNotSame([], $subject->getContents()); // make sure contents are set
++
++        $subject->removeDeclarationBlockBySelector([new Selector('body'), new Selector('html')]);
++
++        self::assertSame([], $subject->getContents());
++    }
++
+     /**
+      * @test
+      */
+

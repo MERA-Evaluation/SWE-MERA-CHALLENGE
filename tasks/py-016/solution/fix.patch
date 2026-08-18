@@ -1,0 +1,531 @@
+diff --git a/Readme.md b/Readme.md
+index d9726ca..b5e1754 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -49,112 +49,117 @@ First is setting the operation mode:
+ 1. *Text mode* - the Tap device will operate normally, with no events being sent to the SDK
+ 2. *Controller mode* - the Tap device will send events to the SDK
+ 3. *Controller and Text mode* - the Tap device will operate normally, in parallel with sending events to the SDK
+-4. *Raw data mode* - tha Tap device will stream raw sensors data to the SDK.
++4. *Raw data mode* - the Tap device will stream raw sensors data to the SDK.
+ 
+ Second, subscribing to the following events:
+ 
+-1. *Tap event* - whenever a tap event has occured
+-2. *Mouse event* - whenever a mouse movement has occured
++1. *Tap event* - whenever a tap event has occurred
++2. *Mouse event* - whenever a mouse movement has occurred
+ 3. *AirGesture event* - whenever one of the gestures is detected
+ 4. *Raw data* - whenever new raw data sample is being made.
+ 
+-Additional to these functional event, there are also some state events, such as connection and disconnection of Tap devices to the SDK backend.
++Additional to these functional events, there are also some state events, such as connection and disconnection of Tap devices to the SDK backend.
+ 
+ #### Spatial Control - NEW
+-Authorized developers can gain access to the experimantal Spatial Control features:
++Authorized developers can gain access to the experimental Spatial Control features:
+ 1. Extended AirGesture state - enabling aggregation for pinch, drag and swipe gestures.
+ 2. Select input type - enabling the selection of input type to be activated - i.e. AirMouse/Tapping. 
+ 
+-These featureas are only available on TapXR and only for qualified developers. Request access [here](https://www.tapwithus.com/contact-us/)
++These features are only available on TapXR and only for qualified developers. Request access [here](https://www.tapwithus.com/contact-us/)
+ 
+ 
+ ### High level API
+-The SDK uses callbacks to implement user functions on the various events. To register a callback, you just have to instance a TapSDK object and just:
++The SDK uses callbacks to implement user functions on the various events. To register a callback, you just have to instance a TapSDK object and:
+ 
+ ```python
+-def on_tap_event(self, identifier, tapcode):
++def on_tap_event(identifier, tapcode):
+     print(identifier + " tapped " + str(tapcode))
+ 
+ tap_device.register_tap_events(on_tap_event)
+ ```
+ #### Commands list
+-1. ```set_input_mode(self, mode:TapInputMode, identifier):```
+-This function send a mode selection command. It accepts an Object of type ```TapInputMode``` initializes with any of the following modes ```["text", "controller", "controller_text", "raw"]```  
+-For example 
++1. ```set_input_mode(self, input_mode:InputMode, identifier=None):```
++This function sends a mode selection command. It accepts an object of type ```InputMode``` such as ```InputModeText```, ```InputModeController```, ```InputModeControllerText```, or ```InputModeRaw```.  
++For example:
+     ```python
+-    from tapsdk import TapInputMode
+-    tap_device.set_input_mode(TapInputMode("controller"))
++    from tapsdk import InputModeController
++    await tap_device.set_input_mode(InputModeController())
+     ```  
+-    Also, when instantiating a ```TapInputMode``` for raw sensors mode, additional arguments ```sensitivity``` (list with 3 integers) and ```scaled``` are optional. When ```scaled``` is set to ```True```, the IMU values will be converted to dps and g according to the given sensitivity.
++    For raw sensors mode, you can specify sensitivity and scaling:
+     ```python
+-    tap_device.set_input_mode(TapInputMode("raw", sensitivity=[2,1,4], scaled=True))
+-
+-2. ```set_input_type(self, input_type:InputType, identifier):```   
++    from tapsdk import InputModeRaw
++    from tapsdk.enumerations import FingerAcclSensitivity, ImuGyroSensitivity, ImuAcclSensitivity
++    await tap_device.set_input_mode(InputModeRaw(
++        scaled=True,
++        finger_accl_sens=FingerAcclSensitivity.G4,
++        imu_gyro_sens=ImuGyroSensitivity.DPS250,
++        imu_accl_sens=ImuAcclSensitivity.G4
++    ))
++    ```
++2. ```set_input_type(self, input_type:InputType, identifier=None):```   
+     > **Only for TapXR and with Spatial Control experimental firmware**
+ 
+-    This function sends a command to force input type. It accepts an enum of type ```InputType``` initialized with any of the types ```["MOUSE", "KEYBOARD", "AUTO"]```  
+-    For example 
++    This function sends a command to force input type. It accepts an enum of type ```InputType``` initialized with any of the types ```InputType.MOUSE```, ```InputType.KEYBOARD```, or ```InputType.AUTO```.  
++    For example:
+     ```python
+     from tapsdk import InputType
+-    tap_device.set_input_mode(InputType.AUTO)
++    await tap_device.set_input_type(InputType.AUTO)
+     ```  
+     This will set the input to be automatically selected by the Tap device, based on hand posture.
+ 
+-3. ```send_vibration_sequence(self, sequence:list, identifier):```
+-This function send a series of haptic activations. ```sequence``` is a list of integers indicating for the activation and delay periods one after another. The periods are in millisecond units, in the range of [10,2550] and in resolution of 10ms. Each haptic command support up to 18 period definitions (i.e. 9 haptics + delay pairs).  
+-For example, 
++3. ```send_vibration_sequence(self, sequence:list, identifier=None):```
++This function sends a series of haptic activations. ```sequence``` is a list of integers indicating the activation and delay periods one after another. The periods are in millisecond units, in the range of [10,2550] and in resolution of 10ms. Each haptic command supports up to 18 period definitions (i.e. 9 haptics + delay pairs).  
++For example: 
+     ```python 
+-        tap_device.send_vibration_sequence(sequence=[1000,300,200])
++    await tap_device.send_vibration_sequence(sequence=[1000,300,200])
+     ```  
+     will trigger a 1s haptic, followed by 300ms delay, followed by 200ms haptic.
+ 
+ 
+ #### Events list
+ 1. ```register_connection_events(self, listener:Callable):```  
+-Resgister callback to a Tap strap connection event.
+-```python
+-    def on_connect(identifier, name, fw):
+-        print(identifier + " - connected. Name: " + str(name), " FW Version: ", fw)
++Register callback to a Tap strap connection event.
++    ```python
++    def on_connect(tap_sdk_instance):
++        print("Connected to Tap device")
+ 
+     tap_device.register_connection_events(on_connect)
+-``` 
++    ``` 
+ 
+ 2. ```register_disconnection_events(self, listener:Callable):```  
+-Resgister callback to a Tap strap disconnection event.
++Register callback to a Tap strap disconnection event.
+     ```python
+-    def on_disconnect(identifier):
+-        print(identifier + " - disconnected")
++    def on_disconnect(client):
++        print("Tap device disconnected")
+ 
+     tap_device.register_disconnection_events(on_disconnect)
+     ``` 
+ 
+-
+ 3. ```register_tap_events(self, listener:Callable):```  
+-Resgister callback to a tap event.
++Register callback to a tap event.
+     ```python
+     def on_tap_event(identifier, tapcode):
+-        print(identifier + " -  tapped " + str(tapcode))
++        print(identifier + " - tapped " + str(tapcode))
+ 
+     tap_device.register_tap_events(on_tap_event)
+     ```    
+-    ```tapcode``` is a 8-bit unsigned number, between 1 and 31 which is formed by a binary  representation of the fingers that are tapped.
+-    The LSb is thumb finger, the MSb is the pinky finger. 
+-    For example: if combination equls 5 - it's binary form is 10100 - means that the thumb and the middle fingers were tapped.
++    ```tapcode``` is an 8-bit unsigned number, between 1 and 31 which is formed by a binary representation of the fingers that are tapped.
++The LSb is thumb finger, the MSb is the pinky finger. 
++For example: if combination equals 5 - its binary form is 10100 - means that the thumb and the middle fingers were tapped.
+ 
+ 
+ 4. ```register_mouse_events(self, listener:Callable):```  
+-Resgister callback to a mouse or air mouse movement event.
++Register callback to a mouse or air mouse movement event.
+     ```python
+     def on_mouse_event(identifier, vx, vy, proximity):
+         print(identifier + " - moused: %d, %d" %(vx, vy))
+ 
+-    tap_device.register_tap_events(on_tap_event)
++    tap_device.register_mouse_events(on_mouse_event)
+     ``` 
+     ```vx``` and ```vy``` are the horizontal and vertical velocities of the mouse movement respectively.
+-    ```proximity``` is a boolean that indicates for proximity with a surface.
+-
++```proximity``` is a boolean that indicates proximity with a surface.
+ 5. ```register_raw_data_events(self, listener:Callable):```  
+-Resgister callback to raw sensors data packet received event.
++Register callback to raw sensors data packet received event.
+     ```python
+     def on_raw_sensor_data(identifier, raw_sensor_data):
+         print(identifier + " - raw data received: " + str(raw_sensor_data))
+@@ -164,7 +169,7 @@ Resgister callback to raw sensors data packet received event.
+     You'll find more information on that mode in the dedicated section below or [here](https://tapwithus.atlassian.net/wiki/spaces/TD/pages/792002574/Tap+Strap+Raw+Sensors+Mode).
+ 
+ 6. ```register_air_gesture_events(self, listener:Callable):```  
+-Resgister callback to air gesture events.
++Register callback to air gesture events.
+     ```python
+     from tapsdk import AirGestures
+ 
+@@ -176,7 +181,7 @@ Resgister callback to air gesture events.
+     ```gesture``` is an integer code of the air gesture detected. The air gesture values are enumerated in the ```AirGestures``` class.
+ 
+ 7. ```register_air_gesture_state_events(self, listener:Callable):```  
+-Resgister callback to events air gesture entarnce/exit.
++Register callback to events air gesture entrance/exit.
+     ```python
+     def on_airgesture_state_change(identifier, in_airgesture_state):
+         print(identifier + " - gesture: " + str(in_airgesture_state))
+@@ -205,37 +210,19 @@ The sensors measurements are given with respect to the reference system below.
+ Each sample (of accelerometer or imu) is preambled with a millisecond timestamp, referenced to an internal Tap clock.
+ 
+ 
+-The dynamic range of the sensors is determined with the ```set_input_mode``` method by passing a ```sensitivity``` integers list of length 3 with the following elements (by order): 
+-1. Fingers accelerometers sensitivity - 
+-
+-    | value | sensitivity | scale factor (mg/LSB)|
+-    | :---: | :---: | :---: | 
+-    | 0 (default) | ±16G | 31.25 |
+-    | 1 | ±2G | 3.91 |
+-    | 2 | ±4G | 7.81 |
+-    | 3 | ±8G | 15.62 |
+-    | 4 | ±16G | 31.25 |
+-
+-
+-2. IMU gyro sensitivity - 
+-    | value | sensitivity | scale factor (mdps/LSB)|
+-    | :---: | :---: | :---: |
+-    | 0 (default) | ±500dps | 17.5 |
+-    | 1 | ±125dps | 4.375 |
+-    | 2 | ±250dps | 8.75 |
+-    | 3 | ±500dps | 17.5 |
+-    | 4 | ±1000dps | 35 |
+-    | 5 | ±2000dps | 70 |
+-
+-3. IMU accelerometer sensitivity -
+-
+-    | value | sensitivity | scale factor (mg/LSB)|
+-    | :---: | :---: | :---: | 
+-    | 0 (default) | ±4G | 0.122 |
+-    | 1 | ±2G | 0.061 |
+-    | 2 | ±4G | 0.122 |
+-    | 3 | ±8G | 0.244 |
+-    | 4 | ±16G | 0.488 |
++The dynamic range of the sensors is determined with the ```set_input_mode``` method by passing an ```InputModeRaw``` instance with the desired sensitivity enums, and a boolean flag indicating if the data should be scaled to mg and mdps for the accelerometer and gyro respectively:
++```python
++from tapsdk import InputModeRaw
++from tapsdk.enumerations import FingerAcclSensitivity, ImuGyroSensitivity, ImuAcclSensitivity
++
++await tap_device.set_input_mode(InputModeRaw(
++    scaled=True,
++    finger_accl_sens=FingerAcclSensitivity.G4,
++    imu_gyro_sens=ImuGyroSensitivity.DPS250,
++    imu_accl_sens=ImuAcclSensitivity.G4
++))
++```
++Refer to the enums in [`tapsdk.enumerations`](tapsdk/enumerations.py#L36) for the available sensitivity values.
+ 
+ ### Examples
+ 
+diff --git a/examples/basic.py b/examples/basic.py
+index 19254b3..b32dc09 100644
+--- a/examples/basic.py
++++ b/examples/basic.py
+@@ -2,7 +2,9 @@ import asyncio
+ import logging
+ import time
+ 
+-from tapsdk import AirGestures, InputType, TapInputMode, TapSDK
++from tapsdk import AirGestures, InputType, TapSDK
++from tapsdk import inputmodes as im
++from tapsdk.enumerations import FingerAcclSensitivity, ImuGyroSensitivity, ImuAcclSensitivity
+ 
+ logging.basicConfig(level=logging.INFO)
+ logging.getLogger("tapsdk").setLevel(logging.DEBUG)
+@@ -52,7 +54,7 @@ async def run():
+     logger.info("Connected: %s", client.client.is_connected)
+ 
+     logger.info("Set Controller Mode for 5 seconds")
+-    await client.set_input_mode(TapInputMode("controller"))
++    await client.set_input_mode(im.InputModeController())
+     await asyncio.sleep(5)
+ 
+     logger.info("Force Mouse Mode for 5 seconds")
+@@ -68,7 +70,7 @@ async def run():
+     await asyncio.sleep(10)
+ 
+     logger.info("Set Text Mode for 10 seconds")
+-    await client.set_input_mode(TapInputMode("text"))
++    await client.set_input_mode(im.InputModeText())
+     await asyncio.sleep(10)
+ 
+     logger.info("Send Haptics")
+@@ -77,7 +79,10 @@ async def run():
+ 
+     logger.info("Set Raw Mode for 5 seconds")
+     await asyncio.sleep(2)
+-    await client.set_input_mode(TapInputMode("raw", sensitivity=[0, 0, 0], scaled=True))
++    await client.set_input_mode(im.InputModeRaw(finger_accl_sens=FingerAcclSensitivity.G16,
++                                                imu_gyro_sens=ImuGyroSensitivity.DPS500,
++                                                imu_accl_sens=ImuAcclSensitivity.G4,
++                                                scaled=True))
+     await asyncio.sleep(5)
+ 
+ 
+diff --git a/tapsdk/__init__.py b/tapsdk/__init__.py
+index 52d005d..8eef1c6 100644
+--- a/tapsdk/__init__.py
++++ b/tapsdk/__init__.py
+@@ -1,3 +1,3 @@
+ from tapsdk.enumerations import InputType, AirGestures  # noqa: F401
+-from tapsdk.inputmodes import TapInputMode              # noqa: F401
++from tapsdk.inputmodes import InputModeRaw, InputModeController, InputModeText, InputModeControllerText  # noqa: F401
+ from tapsdk.tap import TapSDK                           # noqa: F401
+diff --git a/tapsdk/enumerations.py b/tapsdk/enumerations.py
+index 1c7b055..4395047 100644
+--- a/tapsdk/enumerations.py
++++ b/tapsdk/enumerations.py
+@@ -31,3 +31,25 @@ class AirGestures(Enum):
+     STATE_OPEN = 100
+     STATE_THUMB_FINGER = 101
+     STATE_THUMB_MIDDLE = 102
++
++
++class FingerAcclSensitivity(Enum):
++    G2 = 1
++    G4 = 2
++    G8 = 3
++    G16 = 4
++
++
++class ImuGyroSensitivity(Enum):
++    DPS125 = 1
++    DPS250 = 2
++    DPS500 = 3
++    DPS1000 = 4
++    DPS2000 = 5
++
++
++class ImuAcclSensitivity(Enum):
++    G2 = 1
++    G4 = 2
++    G8 = 3
++    G16 = 4
+diff --git a/tapsdk/inputmodes.py b/tapsdk/inputmodes.py
+index aa55404..13be2ab 100644
+--- a/tapsdk/inputmodes.py
++++ b/tapsdk/inputmodes.py
+@@ -1,40 +1,69 @@
++from enum import Enum
+ import logging
+-from .enumerations import InputType
++from .enumerations import InputType, FingerAcclSensitivity, ImuGyroSensitivity, ImuAcclSensitivity
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+-class TapInputMode:
+-    def __init__(self, mode, sensitivity=None, scaled=False):
+-        self._modes = {
+-                "text": {"name": "Text Mode", "code": bytearray([0x3, 0xc, 0x0, 0x0])},
+-                "controller": {"name": "Controller Mode", "code": bytearray([0x3, 0xc, 0x0, 0x1])},
+-                "controller_text": {"name": "Controller and Text Mode", "code": bytearray([0x3, 0xc, 0x0, 0x3])},
+-                "raw": {"name": "Raw sensors Mode", "code": bytearray([0x3, 0xc, 0x0, 0xa])}
+-                }
+-        self.sensitivity = sensitivity or [0, 0, 0]
+-        self.scaled = scaled
+-        if mode in self._modes.keys():
+-            self.mode = mode
+-            if mode == "raw":
+-                self._register_sensitivity(self.sensitivity)
+-        else:
+-            logger.warning("Invalid mode \"%s\". Set to \"text\"", mode)
+-            self.mode = "text"
+-
+-    def _register_sensitivity(self, sensitivity):
+-        if isinstance(sensitivity, list) and len(sensitivity) == 3:
+-            sensitivity[0] = max(0, min(4, sensitivity[0]))  # fingers accelerometers
+-            sensitivity[1] = max(0, min(5, sensitivity[1]))  # imu gyro
+-            sensitivity[2] = max(0, min(4, sensitivity[2]))  # imu accelerometer
+-            self.sensitivity = sensitivity
+-            self._modes["raw"]["code"] = self._modes["raw"]["code"][:4] + bytearray(sensitivity)
++class RawSensorsSensitivity():
++    finger_acc_scales = [None, 3.91, 7.81, 15.62, 31.25]  # mg/lsb
++    imu_gyro_scales = [None, 4.375, 8.75, 17.5, 35, 70]  # mdps/lsb
++    imu_acc_scales = [None, 0.061, 0.122, 0.244, 0.488]  # mg/lsb
++
++    def __init__(self, finger_accl_sens, imu_gyro_sens, imu_accl_sens):
++        assert all(isinstance(s, Enum) for s in [finger_accl_sens, imu_gyro_sens, imu_accl_sens]), \
++            "sensitivity values must be of type Enum"
++        self.sens_values = [finger_accl_sens.value, imu_gyro_sens.value, imu_accl_sens.value]
++        self.scale_factors = [      # in mg, mdps, mg
++            self.finger_acc_scales[self.sens_values[0]],
++            self.imu_gyro_scales[self.sens_values[1]],
++            self.imu_acc_scales[self.sens_values[2]]
++        ]
++
++    def tolist(self):
++        return self.sens_values
++
++    def get_scale_factors(self):
++        return self.scale_factors
++
++
++class InputMode:
++    COMMAND_PREFIX = bytearray([0x3, 0xc, 0x0])
+ 
+     def get_command(self):
+-        return self._modes[self.mode]["code"]
++        return self.COMMAND_PREFIX + self.code
++
++    def __repr__(self):
++        return self.name
++
+ 
+-    def get_name(self):
+-        return self._modes[self.mode]["name"]
++class InputModeController(InputMode):
++    def __init__(self):
++        self.name = "Controller Mode"
++        self.code = bytearray([0x1])
++
++
++class InputModeText(InputMode):
++    def __init__(self):
++        self.name = "Text Mode"
++        self.code = bytearray([0x0])
++
++
++class InputModeControllerText(InputMode):
++    def __init__(self):
++        self.name = "Controller and Text Mode"
++        self.code = bytearray([0x3])
++
++
++class InputModeRaw(InputMode):
++    def __init__(self, scaled=False, finger_accl_sens=None,
++                 imu_gyro_sens=None, imu_accl_sens=None):
++        self.name = "Raw sensors Mode"
++        self.scaled = scaled
++        self.sensitivity = RawSensorsSensitivity(finger_accl_sens or FingerAcclSensitivity.G2,
++                                                 imu_gyro_sens or ImuGyroSensitivity.DPS125,
++                                                 imu_accl_sens or ImuAcclSensitivity.G2)
++        self.code = bytearray([0xa]) + bytearray(self.sensitivity.tolist())
+ 
+ 
+ def input_type_command(input_type):
+diff --git a/tapsdk/parsers.py b/tapsdk/parsers.py
+index 0121bcf..e883e5a 100644
+--- a/tapsdk/parsers.py
++++ b/tapsdk/parsers.py
+@@ -17,7 +17,7 @@ def tap_data_msg(data: bytearray):
+     return [data[0]]
+ 
+ 
+-def raw_data_msg(data: bytearray, scaled: bool = False, sensitivity=None):
++def raw_data_msg(data: bytearray, scale_factors=None):
+     '''
+     Parses raw data messages into structured data with optional scaling.
+     Raw data is packed into messages with the following structure:
+@@ -35,13 +35,6 @@ def raw_data_msg(data: bytearray, scaled: bool = False, sensitivity=None):
+                                         ...]
+ 
+     '''
+-    if sensitivity is None:
+-        sensitivity = [0, 0, 0]
+-
+-    finger_acc_scales = [31.25, 3.91, 7.81, 15.62, 31.25]
+-    gyro_scales = [17.5, 4.375, 8.75, 17.5, 35, 70]
+-    imu_acc_scales = [0.122, 0.061, 0.122, 0.244, 0.488]
+-
+     L = len(data)
+     ptr = 0
+     messages = []
+@@ -68,16 +61,12 @@ def raw_data_msg(data: bytearray, scaled: bool = False, sensitivity=None):
+             ptr += 2
+             payload.append(val)
+ 
+-        if scaled:
+-            if msg == "imu":
+-                g_scale = gyro_scales[sensitivity[1]] / 1000.0
+-                xl_scale = imu_acc_scales[sensitivity[2]] / 1000.0
+-                payload = [payload[j] * g_scale if j < 3 else payload[j] * xl_scale
++        if scale_factors:
++            if msg == "accl":
++                payload = [v * scale_factors[0] for v in payload]
++            elif msg == "imu":
++                payload = [payload[j] * scale_factors[1] if j < 3 else payload[j] * scale_factors[2]
+                            for j in range(num_of_samples)]
+-            else:  # accl message
+-                acc_scale = finger_acc_scales[sensitivity[0]] / 1000.0
+-                payload = [v * acc_scale for v in payload]
+-
+         messages.append({"type": msg, "ts": ts, "payload": payload})
+     return messages
+ 
+diff --git a/tapsdk/tap.py b/tapsdk/tap.py
+index 434c9a9..705dfa9 100644
+--- a/tapsdk/tap.py
++++ b/tapsdk/tap.py
+@@ -7,7 +7,7 @@ from bleak import BleakClient, BleakScanner
+ 
+ from . import parsers
+ from .enumerations import InputType, MouseModes
+-from .inputmodes import TapInputMode, input_type_command
++from .inputmodes import InputModeText, InputMode, InputModeRaw, input_type_command
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -138,7 +138,7 @@ class TapSDK():
+         self.connection_cb = None
+         self.input_mode_refresh = InputModeAutoRefresh(self._refresh_input_mode, timeout=10)
+         self.mouse_mode = MouseModes.STDBY
+-        self.input_mode = TapInputMode("text")
++        self.input_mode = InputModeText()  # Default input mode is Text Mode
+         self.input_type = InputType.AUTO
+ 
+     def register_tap_events(self, cb: Callable):
+@@ -178,12 +178,11 @@ class TapSDK():
+ 
+     def on_raw_data(self, identifier, data):
+         if self.raw_data_event_cb:
+-            scale = False
+-            sensitivity = [0, 0, 0]
+-            if isinstance(self.input_mode, TapInputMode) and self.input_mode.mode == "raw":
+-                scale = getattr(self.input_mode, "scaled", scale)
+-                sensitivity = getattr(self.input_mode, "sensitivity", sensitivity)
+-            args = parsers.raw_data_msg(data, scaled=scale, sensitivity=sensitivity)
++            scale_factors = None
++            if isinstance(self.input_mode, InputModeRaw):
++                if self.input_mode.scaled:
++                    scale_factors = self.input_mode.sensitivity.get_scale_factors()
++            args = parsers.raw_data_msg(data, scale_factors=scale_factors)
+             self.raw_data_event_cb(identifier, args)
+ 
+     def on_air_gesture(self, identifier, data):
+@@ -204,8 +203,8 @@ class TapSDK():
+         write_value = bytearray([0x0, 0x2] + sequence)
+         await self.client.write_gatt_char(ui_cmd_characteristic, write_value)
+ 
+-    async def set_input_mode(self, input_mode: TapInputMode, identifier=None):
+-        if (input_mode.mode == "raw" and self.input_mode.mode == "raw" and
++    async def set_input_mode(self, input_mode: InputMode, identifier=None):
++        if (isinstance(input_mode, InputModeRaw) and isinstance(self.input_mode, InputModeRaw) and
+            self.input_mode.get_command() != input_mode.get_command()):
+             logger.warning("Can't change \"raw\" sensitivities while in \"raw\"")
+             return
+@@ -230,7 +229,7 @@ class TapSDK():
+ 
+     async def _refresh_input_mode(self):
+         await self.set_input_mode(self.input_mode)
+-        logger.debug(f"Input Mode Refreshed: {self.input_mode.get_name()}")
++        logger.debug(f"Input Mode Refreshed: {self.input_mode}")
+         await self.set_input_type(self.input_type)
+         logger.debug(f"Input Type Refreshed: {self.input_type}")
+ 
+

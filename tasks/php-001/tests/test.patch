@@ -1,0 +1,52 @@
+diff --git a/tests/Fixer/ClassNotation/VisibilityRequiredFixerTest.php b/tests/Fixer/ClassNotation/VisibilityRequiredFixerTest.php
+index 95e1c214a..169d151e4 100644
+--- a/tests/Fixer/ClassNotation/VisibilityRequiredFixerTest.php
++++ b/tests/Fixer/ClassNotation/VisibilityRequiredFixerTest.php
+@@ -682,6 +682,16 @@ public function __construct(
+                 }
+                 PHP,
+         ];
++
++        yield 'readonly class' => [
++            <<<'PHP'
++                <?php readonly class Foo
++                {
++                    public function __construct() {}
++                    public function bar(int $x): void {}
++                }
++                PHP,
++        ];
+     }
+ 
+     /**
+diff --git a/tests/Tokenizer/TokensAnalyzerTest.php b/tests/Tokenizer/TokensAnalyzerTest.php
+index e41fa6f30..5dea8dc54 100644
+--- a/tests/Tokenizer/TokensAnalyzerTest.php
++++ b/tests/Tokenizer/TokensAnalyzerTest.php
+@@ -803,6 +803,25 @@ trait Foo
+                 }
+                 PHP,
+         ];
++
++        yield 'readonly class' => [
++            [
++                11 => [
++                    'classIndex' => 3,
++                    'type' => 'method',
++                ],
++                22 => [
++                    'classIndex' => 3,
++                    'type' => 'method',
++                ],
++            ],
++            <<<'PHP'
++                <?php readonly class Foo {
++                    public function __construct() {}
++                    public function process(object $event): void {}
++                }
++                PHP,
++        ];
+     }
+ 
+     /**
+

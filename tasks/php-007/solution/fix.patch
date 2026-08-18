@@ -1,0 +1,59 @@
+diff --git a/app/Services/ApplicationInformationService.php b/app/Services/ApplicationInformationService.php
+index beb94292..1bcd6573 100644
+--- a/app/Services/ApplicationInformationService.php
++++ b/app/Services/ApplicationInformationService.php
+@@ -11,17 +11,22 @@ class ApplicationInformationService
+         private readonly Client $client,
+     ) {}
+ 
+-    /**
+-     * Get the latest version number of Koel from GitHub.
+-     */
+     public function getLatestVersionNumber(): string
+     {
+-        return rescue(function () {
+-            return Cache::remember(cache_key('latest version number'), now()->addDay(), function (): string {
+-                return json_decode(
+-                    $this->client->get('https://api.github.com/repos/koel/koel/tags')->getBody(),
+-                )[0]->name;
+-            });
+-        }) ?? koel_version();
++        return Cache::remember(
++            cache_key('latest version number'),
++            now()->addDay(),
++            fn (): string => (
++                rescue(
++                    fn () => json_decode(
++                        $this->client->get('https://api.github.com/repos/koel/koel/tags', [
++                            'connect_timeout' => 3,
++                            'timeout' => 5,
++                        ])->getBody(),
++                    )[0]->name,
++                    report: false,
++                ) ?? koel_version()
++            ),
++        );
+     }
+ }
+diff --git a/resources/assets/js/components/utils/AppInitializer.vue b/resources/assets/js/components/utils/AppInitializer.vue
+index 12d98ec3..2523bf3f 100644
+--- a/resources/assets/js/components/utils/AppInitializer.vue
++++ b/resources/assets/js/components/utils/AppInitializer.vue
+@@ -19,6 +19,7 @@ const emits = defineEmits<{
+ 
+ const { showOverlay, hideOverlay } = useOverlay()
+ const { currentUser } = useAuthorization()
++const { handleHttpError } = useErrorHandler()
+ 
+ /**
+  * Request for notification permission if it's not provided and the user is OK with notifications.
+@@ -64,7 +65,7 @@ onMounted(async () => {
+ 
+     emits('success')
+   } catch (error: unknown) {
+-    useErrorHandler().handleHttpError(error)
++    handleHttpError(error)
+     emits('error', error)
+   } finally {
+     hideOverlay()
+

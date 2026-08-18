@@ -1,0 +1,1562 @@
+diff --git a/docs/api/newton.rst b/docs/api/newton.rst
+index 1d6d3f65..9213ae16 100644
+--- a/docs/api/newton.rst
++++ b/docs/api/newton.rst
+@@ -53,6 +53,7 @@ newton
+    SDF
+    ShapeFlags
+    State
++   TetMesh
+ 
+ .. rubric:: Functions
+ 
+diff --git a/docs/api/newton_usd.rst b/docs/api/newton_usd.rst
+index 10a1c27e..67358457 100644
+--- a/docs/api/newton_usd.rst
++++ b/docs/api/newton_usd.rst
+@@ -29,6 +29,7 @@ resolver types used by :meth:`newton.ModelBuilder.add_usd`.
+    :toctree: _generated
+    :signatures: long
+ 
++   find_tetmesh_prims
+    get_attribute
+    get_attributes_in_namespace
+    get_custom_attribute_declarations
+@@ -38,6 +39,7 @@ resolver types used by :meth:`newton.ModelBuilder.add_usd`.
+    get_mesh
+    get_quat
+    get_scale
++   get_tetmesh
+    get_transform
+    has_applied_api_schema
+    has_attribute
+diff --git a/newton/__init__.py b/newton/__init__.py
+index 116cdc10..c76cd379 100644
+--- a/newton/__init__.py
++++ b/newton/__init__.py
+@@ -40,6 +40,7 @@ from ._src.geometry import (
+     Mesh,
+     ParticleFlags,
+     ShapeFlags,
++    TetMesh,
+ )
+ 
+ __all__ += [
+@@ -49,6 +50,7 @@ __all__ += [
+     "Mesh",
+     "ParticleFlags",
+     "ShapeFlags",
++    "TetMesh",
+ ]
+ 
+ # ==================================================================================
+diff --git a/newton/_src/geometry/__init__.py b/newton/_src/geometry/__init__.py
+index b7fc52ba..938bf724 100644
+--- a/newton/_src/geometry/__init__.py
++++ b/newton/_src/geometry/__init__.py
+@@ -38,6 +38,7 @@ from .types import (
+     GeoType,
+     Heightfield,
+     Mesh,
++    TetMesh,
+ )
+ from .utils import compute_shape_radius
+ 
+@@ -51,6 +52,7 @@ __all__ = [
+     "Mesh",
+     "ParticleFlags",
+     "ShapeFlags",
++    "TetMesh",
+     "collide_box_box",
+     "collide_capsule_box",
+     "collide_capsule_capsule",
+diff --git a/newton/_src/geometry/types.py b/newton/_src/geometry/types.py
+index be222d29..1046ce9c 100644
+--- a/newton/_src/geometry/types.py
++++ b/newton/_src/geometry/types.py
+@@ -15,6 +15,7 @@
+ 
+ import enum
+ import os
++import warnings
+ from collections.abc import Sequence
+ from typing import TYPE_CHECKING
+ 
+@@ -25,6 +26,7 @@ from ..core.types import Axis, Devicelike, Vec2, Vec3, nparray, override
+ from ..utils.texture import compute_texture_hash
+ 
+ if TYPE_CHECKING:
++    from ..sim.model import Model
+     from .sdf_utils import SDF
+ 
+ 
+@@ -865,6 +867,544 @@ class Mesh:
+             )
+         return self._cached_hash
+ 
++    # ---- Factory methods ---------------------------------------------------
++
++    @staticmethod
++    def create_from_usd(prim, **kwargs) -> "Mesh":
++        """Load a Mesh from a USD prim with the ``UsdGeom.Mesh`` schema.
++
++        This is a convenience wrapper around :func:`newton.usd.get_mesh`.
++        See that function for full documentation.
++
++        Args:
++            prim: The USD prim to load the mesh from.
++            **kwargs: Additional arguments passed to :func:`newton.usd.get_mesh`
++                (e.g. ``load_normals``, ``load_uvs``).
++
++        Returns:
++            Mesh: A new Mesh instance.
++        """
++        from ..usd.utils import get_mesh  # noqa: PLC0415
++
++        result = get_mesh(prim, **kwargs)
++        if isinstance(result, tuple):
++            return result[0]
++        return result
++
++    @staticmethod
++    def create_from_file(filename: str, method: str | None = None, **kwargs) -> "Mesh":
++        """Load a Mesh from a 3D model file.
++
++        Supports common surface mesh formats including OBJ, PLY, STL, and
++        other formats supported by trimesh, meshio, openmesh, or pcu.
++
++        Args:
++            filename: Path to the mesh file.
++            method: Loading backend to use (``"trimesh"``, ``"meshio"``,
++                ``"pcu"``, ``"openmesh"``). If ``None``, each backend is
++                tried in order until one succeeds.
++            **kwargs: Additional arguments passed to the :class:`Mesh`
++                constructor (e.g. ``compute_inertia``, ``is_solid``).
++
++        Returns:
++            Mesh: A new Mesh instance.
++        """
++        if not os.path.exists(filename):
++            raise FileNotFoundError(f"File not found: {filename}")
++
++        from .utils import load_mesh  # noqa: PLC0415
++
++        mesh_points, mesh_indices = load_mesh(filename, method=method)
++        return Mesh(vertices=mesh_points, indices=mesh_indices, **kwargs)
++
++
++class TetMesh:
++    """Represents a tetrahedral mesh for volumetric deformable simulation.
++
++    Stores vertex positions (surface + interior nodes), tetrahedral element
++    connectivity, and an optional surface triangle mesh. If no surface mesh
++    is provided, it is automatically computed from the open (unshared) faces
++    of the tetrahedra.
++
++    Optionally carries per-element material arrays and a density value loaded
++    from file. These are used as defaults by builder methods and can be
++    overridden at instantiation time.
++
++    Example:
++        Create a TetMesh from raw arrays:
++
++        .. code-block:: python
++
++            import numpy as np
++            import newton
++
++            vertices = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
++            tet_indices = np.array([0, 1, 2, 3], dtype=np.int32)
++            tet_mesh = newton.TetMesh(vertices, tet_indices)
++    """
++
++    _RESERVED_ATTR_KEYS = frozenset({"vertices", "tet_indices", "k_mu", "k_lambda", "k_damp", "density"})
++
++    def __init__(
++        self,
++        vertices: Sequence[Vec3] | nparray,
++        tet_indices: Sequence[int] | nparray,
++        k_mu: nparray | float | None = None,
++        k_lambda: nparray | float | None = None,
++        k_damp: nparray | float | None = None,
++        density: float | None = None,
++        custom_attributes: ("dict[str, nparray] | dict[str, tuple[nparray, Model.AttributeFrequency]] | None") = None,
++    ):
++        """Construct a TetMesh from vertex positions and tet connectivity.
++
++        Args:
++            vertices: Vertex positions [m], shape (N, 3).
++            tet_indices: Tetrahedral element indices, flattened (4 per tet).
++            k_mu: First elastic Lame parameter [Pa]. Scalar (uniform) or
++                per-element array of shape (tet_count,).
++            k_lambda: Second elastic Lame parameter [Pa]. Scalar (uniform) or
++                per-element array of shape (tet_count,).
++            k_damp: Rayleigh damping coefficient [-] (dimensionless). Scalar
++                (uniform) or per-element array of shape (tet_count,).
++            density: Uniform density [kg/m^3] for mass computation.
++            custom_attributes: Dictionary of named custom arrays with their
++                :class:`~newton.Model.AttributeFrequency`. Each value can be
++                either a bare array (frequency auto-inferred from length) or a
++                ``(array, frequency)`` tuple.
++        """
++        self._vertices = np.array(vertices, dtype=np.float32).reshape(-1, 3)
++        self._tet_indices = np.array(tet_indices, dtype=np.int32).flatten()
++        if len(self._tet_indices) % 4 != 0:
++            raise ValueError(f"tet_indices length must be a multiple of 4, got {len(self._tet_indices)}.")
++
++        vertex_count = len(self._vertices)
++        if len(self._tet_indices) > 0:
++            idx_min = int(self._tet_indices.min())
++            idx_max = int(self._tet_indices.max())
++            if idx_min < 0:
++                raise ValueError(f"tet_indices contains negative index {idx_min}.")
++            if idx_max >= vertex_count:
++                raise ValueError(f"tet_indices contains index {idx_max} which exceeds vertex count {vertex_count}.")
++
++        tet_count = len(self._tet_indices) // 4
++
++        self._k_mu = self._broadcast_material(k_mu, tet_count, "k_mu")
++        self._k_lambda = self._broadcast_material(k_lambda, tet_count, "k_lambda")
++        self._k_damp = self._broadcast_material(k_damp, tet_count, "k_damp")
++        self._density = density
++        # Compute surface triangles from boundary faces (before custom attrs so tri_count is available)
++        self._surface_tri_indices = self._compute_surface_triangles()
++        tri_count = len(self._surface_tri_indices) // 3
++
++        self.custom_attributes: dict[str, tuple[np.ndarray, int]] = {}
++        for k, v in (custom_attributes or {}).items():
++            if k in self._RESERVED_ATTR_KEYS:
++                raise ValueError(
++                    f"Custom attribute name '{k}' is reserved. Reserved names: {sorted(self._RESERVED_ATTR_KEYS)}"
++                )
++            if isinstance(v, tuple):
++                arr, freq = v
++                self.custom_attributes[k] = (np.asarray(arr), freq)
++            else:
++                arr = np.asarray(v)
++                freq = self._infer_frequency(arr, vertex_count, tet_count, tri_count, k)
++                self.custom_attributes[k] = (arr, freq)
++
++        self._cached_hash: int | None = None
++
++    @staticmethod
++    def _broadcast_material(value: nparray | float | None, tet_count: int, name: str) -> np.ndarray | None:
++        if value is None:
++            return None
++        arr = np.asarray(value, dtype=np.float32)
++        if arr.ndim == 0:
++            return np.full(tet_count, arr.item(), dtype=np.float32)
++        arr = arr.flatten()
++        if len(arr) == 1:
++            return np.full(tet_count, arr[0], dtype=np.float32)
++        if len(arr) != tet_count:
++            raise ValueError(f"{name} array length ({len(arr)}) does not match tet count ({tet_count}).")
++        return arr
++
++    @staticmethod
++    def _infer_frequency(
++        arr: np.ndarray, vertex_count: int, tet_count: int, tri_count: int, name: str
++    ) -> "Model.AttributeFrequency":
++        """Infer :class:`~newton.Model.AttributeFrequency` from array length.
++
++        Args:
++            arr: The attribute array.
++            vertex_count: Number of vertices in the mesh.
++            tet_count: Number of tetrahedra in the mesh.
++            tri_count: Number of surface triangles in the mesh.
++            name: Attribute name (for error messages).
++
++        Returns:
++            The inferred frequency.
++
++        Raises:
++            ValueError: If the array length is ambiguous (matches multiple
++                counts) or matches none of the known counts.
++        """
++        from ..sim.model import Model  # noqa: PLC0415
++
++        first_dim = arr.shape[0] if arr.ndim >= 1 else 1
++        counts = {"vertex_count": vertex_count, "tet_count": tet_count, "tri_count": tri_count}
++        matches = [label for label, c in counts.items() if first_dim == c and c > 0]
++        if len(matches) > 1:
++            raise ValueError(
++                f"Cannot infer frequency for custom attribute '{name}': array length {first_dim} matches "
++                f"{', '.join(matches)}. Pass an explicit (array, frequency) tuple instead."
++            )
++        if first_dim == vertex_count and vertex_count > 0:
++            return Model.AttributeFrequency.PARTICLE
++        if first_dim == tet_count and tet_count > 0:
++            return Model.AttributeFrequency.TETRAHEDRON
++        if first_dim == tri_count and tri_count > 0:
++            return Model.AttributeFrequency.TRIANGLE
++        raise ValueError(
++            f"Cannot infer frequency for custom attribute '{name}': array length {first_dim} matches none of "
++            f"vertex_count ({vertex_count}), tet_count ({tet_count}), tri_count ({tri_count}). "
++            f"Pass an explicit (array, frequency) tuple instead."
++        )
++
++    @staticmethod
++    def compute_surface_triangles(tet_indices: nparray) -> np.ndarray:
++        """Extract boundary triangles from tetrahedral element indices.
++
++        Finds faces that belong to exactly one tetrahedron (boundary faces)
++        using a vectorized approach.
++
++        Args:
++            tet_indices: Flattened tetrahedral element indices (4 per tet).
++
++        Returns:
++            Flattened boundary triangle indices, 3 per triangle, int32.
++        """
++        tet_indices = np.asarray(tet_indices, dtype=np.int32).flatten()
++        tets = tet_indices.reshape(-1, 4)
++        n = len(tets)
++        if n == 0:
++            return np.array([], dtype=np.int32)
++
++        # Each tet contributes 4 faces with specific winding order:
++        #   face 0: (v0, v2, v1)
++        #   face 1: (v1, v2, v3)
++        #   face 2: (v0, v1, v3)
++        #   face 3: (v0, v3, v2)
++        # fmt: off
++        face_idx = np.array([
++            [0, 2, 1],
++            [1, 2, 3],
++            [0, 1, 3],
++            [0, 3, 2],
++        ])
++        # fmt: on
++
++        # Build all faces: shape (4*n, 3) with original winding
++        all_faces = tets[:, face_idx].reshape(-1, 3)
++
++        # Sort vertex indices per face to create canonical keys
++        sorted_faces = np.sort(all_faces, axis=1)
++
++        # Find unique sorted faces and their counts
++        _, inverse, counts = np.unique(sorted_faces, axis=0, return_inverse=True, return_counts=True)
++
++        # Boundary faces appear exactly once
++        boundary_mask = counts[inverse] == 1
++
++        return all_faces[boundary_mask].astype(np.int32).flatten()
++
++    def _compute_surface_triangles(self) -> np.ndarray:
++        return TetMesh.compute_surface_triangles(self._tet_indices)
++
++    # ---- Properties --------------------------------------------------------
++
++    @property
++    def vertices(self) -> nparray:
++        """Vertex positions [m], shape (N, 3), float32."""
++        return self._vertices
++
++    @property
++    def tet_indices(self) -> nparray:
++        """Tetrahedral element indices, flattened, 4 per tet."""
++        return self._tet_indices
++
++    @property
++    def tet_count(self) -> int:
++        """Number of tetrahedral elements."""
++        return len(self._tet_indices) // 4
++
++    @property
++    def vertex_count(self) -> int:
++        """Number of vertices."""
++        return len(self._vertices)
++
++    @property
++    def surface_tri_indices(self) -> nparray:
++        """Surface triangle indices (open faces), flattened, 3 per tri.
++
++        Automatically computed from tet connectivity at construction time
++        by extracting boundary faces (faces belonging to exactly one tet).
++        """
++        return self._surface_tri_indices
++
++    @property
++    def k_mu(self) -> nparray | None:
++        """Per-element first Lame parameter [Pa], shape (tet_count,) or None."""
++        return self._k_mu
++
++    @property
++    def k_lambda(self) -> nparray | None:
++        """Per-element second Lame parameter [Pa], shape (tet_count,) or None."""
++        return self._k_lambda
++
++    @property
++    def k_damp(self) -> nparray | None:
++        """Per-element Rayleigh damping coefficient [-], shape (tet_count,) or None."""
++        return self._k_damp
++
++    @property
++    def density(self) -> float | None:
++        """Uniform density [kg/m^3] or None."""
++        return self._density
++
++    # ---- Factory methods ---------------------------------------------------
++
++    @staticmethod
++    def create_from_usd(prim) -> "TetMesh":
++        """Load a tetrahedral mesh from a USD prim with the ``UsdGeom.TetMesh`` schema.
++
++        Reads vertex positions from the ``points`` attribute and tetrahedral
++        connectivity from ``tetVertexIndices``. If a physics material is bound
++        to the prim (via ``material:binding:physics``) and contains
++        ``youngsModulus``, ``poissonsRatio``, or ``density`` attributes
++        (under the ``omniphysics:`` or ``physxDeformableBody:`` namespaces),
++        those values are read and converted to Lame parameters (``k_mu``,
++        ``k_lambda``) and density on the returned TetMesh. Material properties
++        are set to ``None`` if not present.
++
++        Example:
++
++            .. code-block:: python
++
++                from pxr import Usd
++                import newton
++                import newton.usd
++
++                usd_stage = Usd.Stage.Open("tetmesh.usda")
++                tetmesh = newton.usd.get_tetmesh(usd_stage.GetPrimAtPath("/MyTetMesh"))
++
++                # tetmesh.vertices  -- np.ndarray, shape (N, 3)
++                # tetmesh.tet_indices -- np.ndarray, flattened (4 per tet)
++
++        Args:
++            prim: The USD prim to load the tetrahedral mesh from.
++
++        Returns:
++            TetMesh: A :class:`newton.TetMesh` with vertex positions and tet connectivity.
++        """
++        from ..usd.utils import get_tetmesh  # noqa: PLC0415
++
++        return get_tetmesh(prim)
++
++    @staticmethod
++    def create_from_file(filename: str) -> "TetMesh":
++        """Load a TetMesh from a volumetric mesh file.
++
++        Supports ``.vtk``, ``.msh``, ``.vtu``, and other formats with
++        tetrahedral cells via meshio. Also supports ``.npz`` files saved
++        by :meth:`TetMesh.save` (numpy only, no extra dependencies).
++
++        Args:
++            filename: Path to the volumetric mesh file.
++
++        Returns:
++            TetMesh: A new TetMesh instance.
++        """
++        if not os.path.exists(filename):
++            raise FileNotFoundError(f"File not found: {filename}")
++
++        ext = os.path.splitext(filename)[1].lower()
++
++        if ext == ".npz":
++            data = np.load(filename)
++            kwargs = {}
++            for key in ("k_mu", "k_lambda", "k_damp"):
++                if key in data:
++                    kwargs[key] = data[key]
++            if "density" in data:
++                kwargs["density"] = float(data["density"])
++            known_keys = {
++                "vertices",
++                "tet_indices",
++                "k_mu",
++                "k_lambda",
++                "k_damp",
++                "density",
++                "__custom_names__",
++                "__custom_freqs__",
++            }
++            freq_map: dict[str, int] = {}
++            if "__custom_names__" in data and "__custom_freqs__" in data:
++                from ..sim.model import Model as _Model  # noqa: PLC0415
++
++                names = data["__custom_names__"]
++                freqs = data["__custom_freqs__"]
++                for n, f in zip(names, freqs, strict=True):
++                    freq_map[str(n)] = int(f)
++            custom: dict[str, np.ndarray | tuple] = {}
++            for k in data.files:
++                if k not in known_keys:
++                    arr = np.asarray(data[k])
++                    if k in freq_map:
++                        from ..sim.model import Model as _Model  # noqa: PLC0415
++
++                        custom[k] = (arr, _Model.AttributeFrequency(freq_map[k]))
++                    else:
++                        custom[k] = arr
++            if custom:
++                kwargs["custom_attributes"] = custom
++            return TetMesh(
++                vertices=data["vertices"],
++                tet_indices=data["tet_indices"],
++                **kwargs,
++            )
++
++        import meshio
++
++        m = meshio.read(filename)
++
++        # Find tetrahedral cells
++        tet_indices = None
++        tet_cell_idx = None
++        for i, cell_block in enumerate(m.cells):
++            if cell_block.type == "tetra":
++                tet_indices = np.array(cell_block.data, dtype=np.int32).flatten()
++                tet_cell_idx = i
++                break
++
++        if tet_indices is None:
++            raise ValueError(f"No tetrahedral cells found in '{filename}'.")
++
++        vertices = np.array(m.points, dtype=np.float32)
++
++        # Read material arrays from cell data
++        kwargs: dict = {}
++        material_keys = {"k_mu", "k_lambda", "k_damp", "density"}
++        if m.cell_data and tet_cell_idx is not None:
++            for key in material_keys:
++                if key in m.cell_data:
++                    arr = np.asarray(m.cell_data[key][tet_cell_idx], dtype=np.float32)
++                    if key == "density":
++                        if arr.size > 1 and not np.allclose(arr, arr[0]):
++                            raise ValueError(
++                                f"Non-uniform per-element density found in '{filename}'. "
++                                f"TetMesh only supports a single uniform density value."
++                            )
++                        kwargs["density"] = float(arr[0])
++                    else:
++                        kwargs[key] = arr
++
++        # Read custom attributes from cell data and point data
++        from ..sim.model import Model as _Model  # noqa: PLC0415
++
++        custom: dict[str, tuple[np.ndarray, _Model.AttributeFrequency]] = {}
++        if m.cell_data and tet_cell_idx is not None:
++            for key, arrays in m.cell_data.items():
++                if key not in material_keys:
++                    custom[key] = (np.asarray(arrays[tet_cell_idx]), _Model.AttributeFrequency.TETRAHEDRON)
++        if m.point_data:
++            for key, arr in m.point_data.items():
++                custom[key] = (np.asarray(arr), _Model.AttributeFrequency.PARTICLE)
++        if custom:
++            kwargs["custom_attributes"] = custom
++
++        return TetMesh(vertices=vertices, tet_indices=tet_indices, **kwargs)
++
++    def save(self, filename: str):
++        """Save the TetMesh to a file.
++
++        For ``.npz``, saves all arrays via :func:`numpy.savez` (no extra
++        dependencies). For other formats (``.vtk``, ``.msh``, ``.vtu``,
++        etc.), uses meshio.
++
++        Args:
++            filename: Path to write the file to.
++        """
++        ext = os.path.splitext(filename)[1].lower()
++
++        if ext == ".npz":
++            save_dict = {
++                "vertices": self._vertices,
++                "tet_indices": self._tet_indices,
++            }
++            if self._k_mu is not None:
++                save_dict["k_mu"] = self._k_mu
++            if self._k_lambda is not None:
++                save_dict["k_lambda"] = self._k_lambda
++            if self._k_damp is not None:
++                save_dict["k_damp"] = self._k_damp
++            if self._density is not None:
++                save_dict["density"] = np.array(self._density)
++            custom_names = []
++            custom_freqs = []
++            for k, (arr, freq) in self.custom_attributes.items():
++                save_dict[k] = arr
++                custom_names.append(k)
++                custom_freqs.append(int(freq))
++            if custom_names:
++                save_dict["__custom_names__"] = np.array(custom_names)
++                save_dict["__custom_freqs__"] = np.array(custom_freqs, dtype=np.int32)
++            np.savez(filename, **save_dict)
++            return
++
++        import meshio
++
++        cells = [("tetra", self._tet_indices.reshape(-1, 4))]
++        cell_data: dict[str, list[np.ndarray]] = {}
++        point_data: dict[str, np.ndarray] = {}
++
++        # Save material arrays as cell data
++        for name, arr in [("k_mu", self._k_mu), ("k_lambda", self._k_lambda), ("k_damp", self._k_damp)]:
++            if arr is not None:
++                cell_data[name] = [arr]
++        if self._density is not None:
++            cell_data["density"] = [np.full(self.tet_count, self._density, dtype=np.float32)]
++
++        # Save custom attributes as point or cell data based on frequency
++        from ..sim.model import Model as _Model  # noqa: PLC0415
++
++        for name, (arr, freq) in self.custom_attributes.items():
++            if freq == _Model.AttributeFrequency.TETRAHEDRON:
++                cell_data[name] = [arr]
++            elif freq == _Model.AttributeFrequency.PARTICLE:
++                point_data[name] = arr
++            else:
++                warnings.warn(
++                    f"Custom attribute '{name}' with frequency {freq} cannot be saved to meshio format "
++                    f"(only PARTICLE and TETRAHEDRON are supported). Skipping.",
++                    stacklevel=2,
++                )
++
++        mesh = meshio.Mesh(
++            points=self._vertices,
++            cells=cells,
++            cell_data=cell_data if cell_data else {},
++            point_data=point_data if point_data else {},
++        )
++        mesh.write(filename)
++
++    def __eq__(self, other):
++        if not isinstance(other, TetMesh):
++            return NotImplemented
++        return np.array_equal(self._vertices, other._vertices) and np.array_equal(self._tet_indices, other._tet_indices)
++
++    def __hash__(self):
++        if self._cached_hash is None:
++            self._cached_hash = hash((self._vertices.tobytes(), self._tet_indices.tobytes()))
++        return self._cached_hash
++
+ 
+ class Heightfield:
+     """
+diff --git a/newton/_src/sim/builder.py b/newton/_src/sim/builder.py
+index 7d1cc434..90221713 100644
+--- a/newton/_src/sim/builder.py
++++ b/newton/_src/sim/builder.py
+@@ -78,6 +78,8 @@ if TYPE_CHECKING:
+     from newton_actuators import Actuator
+     from pxr import Usd
+ 
++    from ..geometry.types import TetMesh
++
+     UsdStage = Usd.Stage
+ else:
+     UsdStage = Any
+@@ -768,6 +770,18 @@ class ModelBuilder:
+         self.default_edge_kd = 0.0
+         """Default edge-bending damping."""
+ 
++        self.default_tet_k_mu = 1.0e3
++        """Default first Lame parameter [Pa] for tetrahedral elements."""
++
++        self.default_tet_k_lambda = 1.0e3
++        """Default second Lame parameter [Pa] for tetrahedral elements."""
++
++        self.default_tet_k_damp = 0.0
++        """Default damping stiffness for tetrahedral elements."""
++
++        self.default_tet_density = 1.0
++        """Default density [kg/m^3] for tetrahedral soft bodies."""
++
+         self.default_body_armature = 0.0
+         """Default body armature value used when body armature is not provided."""
+         # endregion
+@@ -7436,12 +7450,13 @@ class ModelBuilder:
+         rot: Quat,
+         scale: float,
+         vel: Vec3,
+-        vertices: list[Vec3],
+-        indices: list[int],
+-        density: float,
+-        k_mu: float,
+-        k_lambda: float,
+-        k_damp: float,
++        mesh: TetMesh | None = None,
++        vertices: list[Vec3] | None = None,
++        indices: list[int] | None = None,
++        density: float | None = None,
++        k_mu: float | nparray | None = None,
++        k_lambda: float | nparray | None = None,
++        k_damp: float | nparray | None = None,
+         tri_ke: float = 0.0,
+         tri_ka: float = 0.0,
+         tri_kd: float = 0.0,
+@@ -7452,18 +7467,33 @@ class ModelBuilder:
+         edge_kd: float = 0.0,
+         particle_radius: float | None = None,
+     ) -> None:
+-        """Helper to create a tetrahedral model from an input tetrahedral mesh
++        """Helper to create a tetrahedral model from an input tetrahedral mesh.
++
++        Can be called with either a :class:`~newton.TetMesh` object or raw
++        ``vertices``/``indices`` arrays. When both are provided, explicit
++        parameters override the values from the TetMesh.
+ 
+         Args:
+-            pos: The position of the solid in world space
+-            rot: The orientation of the solid in world space
+-            vel: The velocity of the solid in world space
+-            vertices: A list of vertex positions, array of 3D points
+-            indices: A list of tetrahedron indices, 4 entries per-element, flattened array
+-            density: The density per-area of the mesh
+-            k_mu: The first elastic Lame parameter
+-            k_lambda: The second elastic Lame parameter
+-            k_damp: The damping stiffness
++            pos: The position of the solid in world space.
++            rot: The orientation of the solid in world space.
++            scale: Uniform scale applied to vertex positions.
++            vel: The velocity of the solid in world space.
++            mesh: A :class:`~newton.TetMesh` object. When provided, its
++                vertices, indices, material arrays, density, and pre-computed
++                surface triangles are used directly.
++            vertices: A list of vertex positions, array of 3D points.
++                Required if ``mesh`` is not provided.
++            indices: A list of tetrahedron indices, 4 entries per-element,
++                flattened array. Required if ``mesh`` is not provided.
++            density: The density [kg/m^3] of the mesh. Overrides ``mesh.density``
++                if both are provided.
++            k_mu: The first elastic Lame parameter [Pa]. Scalar or per-element
++                array. Overrides ``mesh.k_mu`` if both are provided.
++            k_lambda: The second elastic Lame parameter [Pa]. Scalar or
++                per-element array. Overrides ``mesh.k_lambda`` if both are
++                provided.
++            k_damp: The damping stiffness. Scalar or per-element array.
++                Overrides ``mesh.k_damp`` if both are provided.
+             tri_ke: Stiffness for surface mesh triangles. Defaults to 0.0.
+             tri_ka: Area stiffness for surface mesh triangles. Defaults to 0.0.
+             tri_kd: Damping for surface mesh triangles. Defaults to 0.0.
+@@ -7473,35 +7503,88 @@ class ModelBuilder:
+                 generated surface mesh. These edges improve collision robustness for VBD solver. Defaults to True.
+             edge_ke: Bending edge stiffness used when ``add_surface_mesh_edges`` is True. Defaults to 0.0.
+             edge_kd: Bending edge damping used when ``add_surface_mesh_edges`` is True. Defaults to 0.0.
+-            particle_radius: particle's contact radius (controls rigidbody-particle contact distance)
++            particle_radius: particle's contact radius (controls rigidbody-particle contact distance).
+ 
+         Note:
++            **Parameter resolution order:** explicit argument > :class:`~newton.TetMesh`
++            attribute > builder default (:attr:`default_tet_density`,
++            :attr:`default_tet_k_mu`, :attr:`default_tet_k_lambda`,
++            :attr:`default_tet_k_damp`).
++
+             The generated surface triangles and optional edges are for collision purposes.
+             Their stiffness and damping values default to zero so they do not introduce additional
+             elastic forces. Set the stiffness parameters above to non-zero values if you
+             want the surface to behave like a thin skin.
+         """
++        from ..geometry.types import TetMesh  # noqa: PLC0415
++
++        # Resolve parameters: explicit args > mesh attributes > error
++        if mesh is not None:
++            if not isinstance(mesh, TetMesh):
++                raise TypeError(f"mesh must be a TetMesh, got {type(mesh).__name__}")
++            if vertices is None:
++                vertices = mesh.vertices
++            if indices is None:
++                indices = mesh.tet_indices
++            if density is None:
++                density = mesh.density
++            if k_mu is None:
++                k_mu = mesh.k_mu
++            if k_lambda is None:
++                k_lambda = mesh.k_lambda
++            if k_damp is None:
++                k_damp = mesh.k_damp
++
++        if vertices is None or indices is None:
++            raise ValueError("Either 'mesh' or both 'vertices' and 'indices' must be provided.")
++        if density is None:
++            density = self.default_tet_density
++        if k_mu is None:
++            k_mu = self.default_tet_k_mu
++        if k_lambda is None:
++            k_lambda = self.default_tet_k_lambda
++        if k_damp is None:
++            k_damp = self.default_tet_k_damp
++
+         num_tets = int(len(indices) / 4)
++        k_mu_arr = np.broadcast_to(np.asarray(k_mu, dtype=np.float32).flatten(), num_tets)
++        k_lambda_arr = np.broadcast_to(np.asarray(k_lambda, dtype=np.float32).flatten(), num_tets)
++        k_damp_arr = np.broadcast_to(np.asarray(k_damp, dtype=np.float32).flatten(), num_tets)
++
++        # Extract custom attributes grouped by frequency, validating against builder registry
++        particle_custom: dict[str, np.ndarray] = {}
++        tet_custom: dict[str, np.ndarray] = {}
++        tri_custom: dict[str, np.ndarray] = {}
++        if mesh is not None and mesh.custom_attributes:
++            for attr_name, (arr, freq) in mesh.custom_attributes.items():
++                registered = self.custom_attributes.get(attr_name)
++                if registered is None:
++                    raise ValueError(
++                        f"TetMesh custom attribute '{attr_name}' is not registered in ModelBuilder. "
++                        f"Register it first via add_custom_attribute()."
++                    )
++                if registered.frequency != freq:
++                    raise ValueError(
++                        f"Frequency mismatch for custom attribute '{attr_name}': TetMesh has "
++                        f"{Model.AttributeFrequency(freq).name} but ModelBuilder expects "
++                        f"{registered.frequency.name}."
++                    )
++                if freq == Model.AttributeFrequency.PARTICLE:
++                    particle_custom[attr_name] = arr
++                elif freq == Model.AttributeFrequency.TETRAHEDRON:
++                    tet_custom[attr_name] = arr
++                elif freq == Model.AttributeFrequency.TRIANGLE:
++                    tri_custom[attr_name] = arr
+ 
+         start_vertex = len(self.particle_q)
+ 
+-        # dict of open faces
+-        faces = {}
+-
+-        def add_face(i, j, k):
+-            key = tuple(sorted((i, j, k)))
+-
+-            if key not in faces:
+-                faces[key] = (i, j, k)
+-            else:
+-                del faces[key]
+-
+         pos = wp.vec3(pos[0], pos[1], pos[2])
+         # add particles
+-        for v in vertices:
++        for vi, v in enumerate(vertices):
+             p = wp.quat_rotate(rot, wp.vec3(v[0], v[1], v[2]) * scale) + pos
+ 
+-            self.add_particle(p, vel, 0.0, particle_radius)
++            p_custom = {k: arr[vi] for k, arr in particle_custom.items()} if particle_custom else None
++            self.add_particle(p, vel, 0.0, particle_radius, custom_attributes=p_custom)
+ 
+         # add tetrahedra
+         for t in range(num_tets):
+@@ -7510,7 +7593,17 @@ class ModelBuilder:
+             v2 = start_vertex + indices[t * 4 + 2]
+             v3 = start_vertex + indices[t * 4 + 3]
+ 
+-            volume = self.add_tetrahedron(v0, v1, v2, v3, k_mu, k_lambda, k_damp)
++            t_custom = {k: arr[t] for k, arr in tet_custom.items()} if tet_custom else None
++            volume = self.add_tetrahedron(
++                v0,
++                v1,
++                v2,
++                v3,
++                float(k_mu_arr[t]),
++                float(k_lambda_arr[t]),
++                float(k_damp_arr[t]),
++                custom_attributes=t_custom,
++            )
+ 
+             # distribute volume fraction to particles
+             if volume > 0.0:
+@@ -7519,16 +7612,29 @@ class ModelBuilder:
+                 self.particle_mass[v2] += density * volume / 4.0
+                 self.particle_mass[v3] += density * volume / 4.0
+ 
+-                # build open faces
+-                add_face(v0, v2, v1)
+-                add_face(v1, v2, v3)
+-                add_face(v0, v1, v3)
+-                add_face(v0, v3, v2)
++        # Compute surface triangles — reuse pre-computed result from TetMesh
++        # only when the caller did not override the indices.
++        if mesh is not None and indices is mesh.tet_indices and len(mesh.surface_tri_indices) > 0:
++            surface_tri_indices = mesh.surface_tri_indices
++        else:
++            surface_tri_indices = TetMesh.compute_surface_triangles(indices)
+ 
+         # add surface triangles
+         start_tri = len(self.tri_indices)
+-        for _k, v in faces.items():
+-            self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
++        surf = surface_tri_indices.reshape(-1, 3)
++        for ti, tri in enumerate(surf):
++            tr_custom = {k: arr[ti] for k, arr in tri_custom.items()} if tri_custom else None
++            self.add_triangle(
++                start_vertex + int(tri[0]),
++                start_vertex + int(tri[1]),
++                start_vertex + int(tri[2]),
++                tri_ke,
++                tri_ka,
++                tri_kd,
++                tri_drag,
++                tri_lift,
++                custom_attributes=tr_custom,
++            )
+         end_tri = len(self.tri_indices)
+ 
+         if add_surface_mesh_edges:
+diff --git a/newton/_src/usd/utils.py b/newton/_src/usd/utils.py
+index 8d30f6be..1bfa77a4 100644
+--- a/newton/_src/usd/utils.py
++++ b/newton/_src/usd/utils.py
+@@ -31,6 +31,7 @@ AttributeAssignment = Model.AttributeAssignment
+ AttributeFrequency = Model.AttributeFrequency
+ 
+ if TYPE_CHECKING:
++    from ..geometry.types import TetMesh
+     from ..sim.builder import ModelBuilder
+ 
+ try:
+@@ -1130,6 +1131,200 @@ def get_mesh(
+     return mesh_out
+ 
+ 
++# Schema-defined TetMesh attribute names excluded from custom attribute parsing.
++_TETMESH_SCHEMA_ATTRS = frozenset(
++    {
++        "points",
++        "tetVertexIndices",
++        "surfaceFaceVertexIndices",
++        "extent",
++        "orientation",
++        "purpose",
++        "visibility",
++        "xformOpOrder",
++        "proxyPrim",
++    }
++)
++
++
++def get_tetmesh(prim: Usd.Prim) -> TetMesh:
++    """Load a tetrahedral mesh from a USD prim with the ``UsdGeom.TetMesh`` schema.
++
++    Reads vertex positions from the ``points`` attribute and tetrahedral
++    connectivity from ``tetVertexIndices``. If a physics material is bound
++    to the prim (via ``material:binding:physics``) and contains
++    ``youngsModulus``, ``poissonsRatio``, or ``density`` attributes
++    (under the ``omniphysics:`` or ``physxDeformableBody:`` namespaces),
++    those values are read and converted to Lame parameters (``k_mu``,
++    ``k_lambda``) and density on the returned TetMesh. Material properties
++    are set to ``None`` if not present.
++
++    Example:
++
++        .. code-block:: python
++
++            from pxr import Usd
++            import newton
++            import newton.usd
++
++            usd_stage = Usd.Stage.Open("tetmesh.usda")
++            tetmesh = newton.usd.get_tetmesh(usd_stage.GetPrimAtPath("/MyTetMesh"))
++
++            # tetmesh.vertices  -- np.ndarray, shape (N, 3)
++            # tetmesh.tet_indices -- np.ndarray, flattened (4 per tet)
++
++    Args:
++        prim: The USD prim to load the tetrahedral mesh from.
++
++    Returns:
++        TetMesh: A :class:`newton.TetMesh` with vertex positions and tet connectivity.
++    """
++    from ..geometry.types import TetMesh  # noqa: PLC0415
++
++    tet_mesh = UsdGeom.TetMesh(prim)
++
++    points_attr = tet_mesh.GetPointsAttr().Get()
++    if points_attr is None:
++        raise ValueError(f"TetMesh prim '{prim.GetPath()}' has no points attribute.")
++
++    tet_indices_attr = tet_mesh.GetTetVertexIndicesAttr().Get()
++    if tet_indices_attr is None:
++        raise ValueError(f"TetMesh prim '{prim.GetPath()}' has no tetVertexIndices attribute.")
++
++    vertices = np.array(points_attr, dtype=np.float32)
++    tet_indices = np.array(tet_indices_attr, dtype=np.int32).flatten()
++
++    # Try to read physics material properties if bound
++    k_mu = None
++    k_lambda = None
++    density = None
++
++    material_prim = _find_physics_material_prim(prim)
++    if material_prim is not None:
++        youngs = _read_physics_attr(material_prim, "youngsModulus")
++        poissons = _read_physics_attr(material_prim, "poissonsRatio")
++        density_val = _read_physics_attr(material_prim, "density")
++
++        if youngs is not None and poissons is not None:
++            E = float(youngs)
++            nu = float(poissons)
++            # Clamp Poisson's ratio to the open interval (-1, 0.5) to avoid
++            # division by zero in the Lame parameter conversion.
++            nu = max(-0.999, min(nu, 0.499))
++            k_mu = E / (2.0 * (1.0 + nu))
++            k_lambda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
++
++        if density_val is not None:
++            density = float(density_val)
++
++    # Read custom primvars and attributes (per-vertex, per-tet, etc.)
++    # Primvar interpolation is used to determine the attribute frequency
++    # when available, falling back to length-based inference in TetMesh.__init__.
++    from ..sim.model import Model as _Model  # noqa: PLC0415
++
++    # USD interpolation → Newton frequency for TetMesh prims.
++    # "uniform" means one value per geometric element (cell); for a TetMesh
++    # the cells are tetrahedra, so it maps to TETRAHEDRON.
++    _INTERP_TO_FREQ = {
++        "vertex": _Model.AttributeFrequency.PARTICLE,
++        "varying": _Model.AttributeFrequency.PARTICLE,
++        "uniform": _Model.AttributeFrequency.TETRAHEDRON,
++        "constant": _Model.AttributeFrequency.ONCE,
++    }
++
++    custom_attributes: dict[str, np.ndarray | tuple[np.ndarray, _Model.AttributeFrequency]] = {}
++
++    primvars_api = UsdGeom.PrimvarsAPI(prim)
++    for primvar in primvars_api.GetPrimvarsWithValues():
++        name = primvar.GetPrimvarName()
++        if name in ("st", "normals"):
++            continue  # skip well-known primvars handled elsewhere
++        val = primvar.Get()
++        if val is not None:
++            arr = np.array(val)
++            interp = primvar.GetInterpolation()
++            freq = _INTERP_TO_FREQ.get(interp)
++            if freq is not None:
++                custom_attributes[str(name)] = (arr, freq)
++            else:
++                # Unknown interpolation — let TetMesh infer from length
++                custom_attributes[str(name)] = arr
++
++    # Also read non-schema custom attributes (not primvars, not relationships)
++    for attr in prim.GetAttributes():
++        name = attr.GetName()
++        if name in _TETMESH_SCHEMA_ATTRS:
++            continue
++        if name.startswith("primvars:") or name.startswith("xformOp:"):
++            continue
++        if not attr.HasAuthoredValue():
++            continue
++        val = attr.Get()
++        if val is not None:
++            try:
++                arr = np.array(val)
++                if arr.ndim >= 1:
++                    custom_attributes[name] = arr
++            except (TypeError, ValueError):
++                pass  # skip non-array attributes
++
++    return TetMesh(
++        vertices=vertices,
++        tet_indices=tet_indices,
++        k_mu=k_mu,
++        k_lambda=k_lambda,
++        density=density,
++        custom_attributes=custom_attributes if custom_attributes else None,
++    )
++
++
++def _find_physics_material_prim(prim: Usd.Prim):
++    """Find the physics material prim bound to a prim or its ancestors."""
++    p = prim
++    while p and p.IsValid():
++        binding_api = UsdShade.MaterialBindingAPI(p)
++        rel = binding_api.GetDirectBindingRel("physics")
++        if rel and rel.GetTargets():
++            mat_path = rel.GetTargets()[0]
++            mat_prim = prim.GetStage().GetPrimAtPath(mat_path)
++            if mat_prim and mat_prim.IsValid():
++                return mat_prim
++        p = p.GetParent()
++    return None
++
++
++def _read_physics_attr(prim: Usd.Prim, name: str):
++    """Read a physics attribute from a prim, trying known namespaces."""
++    for prefix in ("omniphysics:", "physxDeformableBody:", "physics:"):
++        attr = prim.GetAttribute(f"{prefix}{name}")
++        if attr and attr.HasAuthoredValue():
++            return attr.Get()
++    return None
++
++
++def find_tetmesh_prims(stage: Usd.Stage) -> list[Usd.Prim]:
++    """Find all prims with the ``UsdGeom.TetMesh`` schema in a USD stage.
++
++    Example:
++
++        .. code-block:: python
++
++            from pxr import Usd
++            import newton.usd
++
++            stage = Usd.Stage.Open("scene.usda")
++            prims = newton.usd.find_tetmesh_prims(stage)
++            tetmeshes = [newton.usd.get_tetmesh(p) for p in prims]
++
++    Args:
++        stage: The USD stage to search.
++
++    Returns:
++        list[Usd.Prim]: All prims in the stage that have the TetMesh schema.
++    """
++    return [prim for prim in stage.Traverse() if prim.IsA(UsdGeom.TetMesh)]
++
++
+ def _resolve_asset_path(
+     asset: Sdf.AssetPath | str | os.PathLike[str] | None,
+     prim: Usd.Prim,
+diff --git a/newton/examples/softbody/example_softbody_franka.py b/newton/examples/softbody/example_softbody_franka.py
+new file mode 100644
+index 00000000..54fcf543
+--- /dev/null
++++ b/newton/examples/softbody/example_softbody_franka.py
+@@ -0,0 +1,414 @@
++# SPDX-FileCopyrightText: Copyright (c) 2026 The Newton Developers
++# SPDX-License-Identifier: Apache-2.0
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++# http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++###########################################################################
++# Example Soft Body Franka
++#
++# Demonstrates a Franka Panda robot grasping a deformable rubber duck
++# on a table. The robot is positioned via Newton's GPU IK solver;
++# Featherstone is used as a kinematic integrator to produce proper
++# body velocities for VBD friction. The duck is a tetrahedral mesh
++# simulated with VBD.
++#
++# The simulation runs in meter scale.
++#
++###########################################################################
++
++from __future__ import annotations
++
++import numpy as np
++import warp as wp
++from pxr import Usd
++
++import newton
++import newton.examples
++import newton.ik as ik
++import newton.utils
++from newton import ModelBuilder, eval_fk
++from newton.solvers import SolverFeatherstone, SolverVBD
++
++
++@wp.kernel
++def set_gripper_q(joint_q: wp.array2d(dtype=float), finger_pos: wp.array(dtype=float), idx0: int, idx1: int):
++    joint_q[0, idx0] = finger_pos[0]
++    joint_q[0, idx1] = finger_pos[0]
++
++
++@wp.kernel
++def compute_joint_qd(
++    target_q: wp.array(dtype=float),
++    current_q: wp.array(dtype=float),
++    out_qd: wp.array(dtype=float),
++    inv_frame_dt: float,
++):
++    i = wp.tid()
++    out_qd[i] = (target_q[i] - current_q[i]) * inv_frame_dt
++
++
++class Example:
++    def __init__(self, viewer, args=None):
++        # simulation parameters (meter scale)
++        self.sim_substeps = 10
++        self.iterations = 5
++        self.fps = 60
++        self.frame_dt = 1 / self.fps
++        self.sim_dt = self.frame_dt / self.sim_substeps
++        self.sim_time = 0.0
++
++        # contact (meter scale)
++        self.particle_radius = 0.005
++        self.soft_body_contact_margin = 0.01
++        self.particle_self_contact_radius = 0.003
++        self.particle_self_contact_margin = 0.005
++
++        self.soft_contact_ke = 2e6
++        self.soft_contact_kd = 1e-7
++        self.self_contact_friction = 0.5
++
++        self.scene = ModelBuilder(gravity=-9.81)
++
++        self.viewer = viewer
++
++        # create robot
++        franka = ModelBuilder()
++        self.create_articulation(franka)
++        self.scene.add_world(franka)
++
++        # add a table (meter scale)
++        table_hx = 0.4
++        table_hy = 0.4
++        table_hz = 0.1
++        table_pos = wp.vec3(0.0, -0.5, 0.1)
++        self.scene.add_shape_box(
++            -1,
++            wp.transform(table_pos, wp.quat_identity()),
++            hx=table_hx,
++            hy=table_hy,
++            hz=table_hz,
++        )
++
++        # load pre-computed tetrahedral mesh from USD
++        duck_path = newton.utils.download_asset("manipulation_objects/rubber_duck")
++        usd_stage = Usd.Stage.Open(str(duck_path / "model.usda"))
++        prim = usd_stage.GetPrimAtPath("/root/Model/TetMesh")
++        tetmesh = newton.TetMesh.create_from_usd(prim)
++
++        # Duck USDA is in meters (metersPerUnit=1.0).
++        # Table top is at z=0.2m. Duck center offset ~0.03m above table.
++        self.scene.add_soft_mesh(
++            pos=wp.vec3(0.0, -0.5, 0.23),
++            rot=wp.quat_identity(),
++            scale=1.0,  # already in meters
++            vel=wp.vec3(0.0, 0.0, 0.0),
++            mesh=tetmesh,
++            density=100.0,
++            k_mu=1.0e6,
++            k_lambda=1.0e6,
++            k_damp=1e-6,
++            particle_radius=self.particle_radius,
++        )
++
++        self.scene.color()
++        self.scene.add_ground_plane()
++
++        self.model = self.scene.finalize(requires_grad=False)
++
++        # contact material properties
++        self.model.soft_contact_ke = self.soft_contact_ke
++        self.model.soft_contact_kd = self.soft_contact_kd
++        self.model.soft_contact_mu = self.self_contact_friction
++
++        self.model.shape_material_ke.fill_(self.soft_contact_ke)
++        self.model.shape_material_kd.fill_(self.soft_contact_kd)
++        self.model.shape_material_mu.fill_(1.5)
++
++        self.state_0 = self.model.state()
++        self.state_1 = self.model.state()
++        self.target_joint_qd = wp.empty_like(self.state_0.joint_qd)
++
++        self.control = self.model.control()
++
++        # collision pipeline for soft body - robot contacts
++        self.collision_pipeline = newton.CollisionPipeline(
++            self.model,
++            soft_contact_margin=self.soft_body_contact_margin,
++        )
++        self.contacts = self.collision_pipeline.contacts()
++
++        self.sim_time = 0.0
++
++        # robot solver (Featherstone as kinematic integrator for body velocities)
++        self.robot_solver = SolverFeatherstone(self.model, update_mass_matrix_interval=self.sim_substeps)
++
++        # IK solver setup
++        self.set_up_ik()
++
++        # soft body solver
++        self.soft_solver = SolverVBD(
++            self.model,
++            iterations=self.iterations,
++            integrate_with_external_rigid_solver=True,
++            particle_self_contact_radius=self.particle_self_contact_radius,
++            particle_self_contact_margin=self.particle_self_contact_margin,
++            particle_enable_self_contact=False,
++            particle_vertex_contact_buffer_size=32,
++            particle_edge_contact_buffer_size=64,
++            particle_collision_detection_interval=-1,
++        )
++
++        self.viewer.set_model(self.model)
++        self.viewer.set_camera(wp.vec3(-0.6, 0.6, 1.24), -42.0, -58.0)
++
++        # gravity arrays for swapping during simulation
++        self.gravity_zero = wp.zeros(1, dtype=wp.vec3)
++        self.gravity_earth = wp.array(wp.vec3(0.0, 0.0, -9.81), dtype=wp.vec3)
++
++        # evaluate FK for initial state
++        eval_fk(self.model, self.model.joint_q, self.model.joint_qd, self.state_0)
++
++        # graph capture for performance
++        self.capture()
++
++    def set_up_ik(self):
++        """Set up GPU IK solver for end-effector pose tracking."""
++        # Evaluate FK to get initial EE transform
++        state = self.model.state()
++        eval_fk(self.model, self.model.joint_q, self.model.joint_qd, state)
++
++        # IK joint coordinates (1 problem, all DOFs)
++        self.n_coords = self.model.joint_coord_count
++        self.n_dofs = self.model.joint_dof_count
++        self.ik_joint_q = wp.array(self.model.joint_q, shape=(1, self.n_coords))
++
++        # Finger DOF indices (last two)
++        self.finger_idx0 = self.n_coords - 2
++        self.finger_idx1 = self.n_coords - 1
++
++        # Finger position buffer (wp.array so it works with graph capture)
++        self.finger_pos_buf = wp.zeros(1, dtype=float)
++
++        # 1D buffer for IK result (target joint config)
++        self.target_joint_q = wp.zeros(self.n_coords, dtype=float)
++
++        # Initial target from keyframe
++        target_pos = wp.vec3(*self.targets[0][:3].tolist())
++        target_rot = wp.vec4(*self.targets[0][3:7].tolist())
++
++        # Position objective (with EE offset along tool axis)
++        self.pos_obj = ik.IKObjectivePosition(
++            link_index=self.endeffector_id,
++            link_offset=wp.vec3(0.0, 0.0, 0.22),
++            target_positions=wp.array([target_pos], dtype=wp.vec3),
++        )
++
++        # Rotation objective
++        self.rot_obj = ik.IKObjectiveRotation(
++            link_index=self.endeffector_id,
++            link_offset_rotation=wp.quat_identity(),
++            target_rotations=wp.array([target_rot], dtype=wp.vec4),
++        )
++
++        # Joint limit objective
++        self.joint_limits_obj = ik.IKObjectiveJointLimit(
++            joint_limit_lower=self.model.joint_limit_lower,
++            joint_limit_upper=self.model.joint_limit_upper,
++            weight=10.0,
++        )
++
++        self.ik_solver = ik.IKSolver(
++            model=self.model,
++            n_problems=1,
++            objectives=[self.pos_obj, self.rot_obj, self.joint_limits_obj],
++            lambda_initial=0.1,
++            jacobian_mode=ik.IKJacobianType.ANALYTIC,
++        )
++
++        self.ik_iters = 24
++
++    def capture(self):
++        if wp.get_device().is_cuda:
++            with wp.ScopedCapture() as capture:
++                self.simulate()
++            self.graph = capture.graph
++        else:
++            self.graph = None
++
++    def create_articulation(self, builder):
++        asset_path = newton.utils.download_asset("franka_emika_panda")
++
++        builder.add_urdf(
++            str(asset_path / "urdf" / "fr3_franka_hand.urdf"),
++            xform=wp.transform((-0.5, -0.5, -0.1), wp.quat_identity()),
++            floating=False,
++            scale=1.0,  # URDF is in meters
++            enable_self_collisions=False,
++            collapse_fixed_joints=True,
++            force_show_colliders=False,
++        )
++        builder.joint_q[:6] = [0.0, 0.0, 0.0, -1.59695, 0.0, 2.5307]
++
++        gripper_open = 1.0
++        gripper_close = 0.5
++
++        # Keyframe sequence: approach, descend, pinch, lift, hold, place, release, retract
++        # [duration, px, py, pz, qx, qy, qz, qw, gripper_activation] (positions in meters)
++        self.robot_key_poses = np.array(
++            [
++                # approach: move above the duck
++                [2.5, -0.005, -0.5, 0.35, 1, 0.0, 0.0, 0.0, gripper_open],
++                # descend: lower to duck body
++                [2.0, -0.005, -0.5, 0.21, 1, 0.0, 0.0, 0.0, gripper_open],
++                # pinch: close gripper on duck
++                [2.5, -0.005, -0.5, 0.21, 1, 0.0, 0.0, 0.0, gripper_close],
++                # lift: raise duck off table
++                [2.0, -0.005, -0.5, 0.35, 1, 0.0, 0.0, 0.0, gripper_close],
++                # hold: pause in air
++                [2.0, -0.005, -0.5, 0.35, 1, 0.0, 0.0, 0.0, gripper_close],
++                # place: lower back to table
++                [2.0, -0.005, -0.5, 0.21, 1, 0.0, 0.0, 0.0, gripper_close],
++                # release: open gripper
++                [1.0, -0.005, -0.5, 0.21, 1, 0.0, 0.0, 0.0, gripper_open],
++                # retract: move away
++                [2.0, -0.005, -0.5, 0.35, 1, 0.0, 0.0, 0.0, gripper_open],
++            ],
++            dtype=np.float32,
++        )
++
++        self.targets = self.robot_key_poses[:, 1:]
++        self.transition_duration = self.robot_key_poses[:, 0]
++        self.target = self.targets[0]
++
++        self.robot_key_poses_time = np.cumsum(self.robot_key_poses[:, 0])
++        self.endeffector_id = builder.body_count - 3
++
++    def update_ik_targets(self):
++        """Interpolate keyframes and update IK target arrays (CPU, called before graph launch)."""
++        if self.sim_time >= self.robot_key_poses_time[-1]:
++            return
++
++        current_interval = np.searchsorted(self.robot_key_poses_time, self.sim_time)
++
++        # Interpolate between previous and current keyframe target
++        t_start = self.robot_key_poses_time[current_interval - 1] if current_interval > 0 else 0.0
++        t_end = self.robot_key_poses_time[current_interval]
++        alpha = float(np.clip((self.sim_time - t_start) / (t_end - t_start), 0.0, 1.0))
++
++        target_cur = self.targets[current_interval]
++        target_prev = self.targets[current_interval - 1] if current_interval > 0 else target_cur
++        target_interp = (1.0 - alpha) * target_prev + alpha * target_cur
++
++        # Update IK target arrays on GPU (read by IK solver inside captured graph)
++        self.pos_obj.set_target_position(0, wp.vec3(*target_interp[:3].tolist()))
++        self.rot_obj.set_target_rotation(0, wp.vec4(*target_interp[3:7].tolist()))
++
++        # Update gripper finger position buffer
++        finger_pos = float(target_interp[-1]) * 0.04
++        self.finger_pos_buf.fill_(finger_pos)
++
++    def step(self):
++        self.update_ik_targets()
++        if self.graph:
++            wp.capture_launch(self.graph)
++            self.sim_time += self.frame_dt
++        else:
++            self.simulate()
++
++    def simulate(self):
++        # IK solve once per frame (GPU, captured in graph)
++        self.ik_solver.step(self.ik_joint_q, self.ik_joint_q, iterations=self.ik_iters)
++
++        # Set gripper finger positions from buffer
++        wp.launch(
++            set_gripper_q,
++            dim=1,
++            inputs=[self.ik_joint_q, self.finger_pos_buf, self.finger_idx0, self.finger_idx1],
++        )
++
++        # Copy IK result to target buffer (2D -> 1D, contiguous memory)
++        wp.copy(self.target_joint_q, self.ik_joint_q, dest_offset=0, src_offset=0, count=self.n_coords)
++
++        # Compute joint velocity: qd = (target - current) / frame_dt
++        wp.launch(
++            compute_joint_qd,
++            dim=self.n_dofs,
++            inputs=[self.target_joint_q, self.state_0.joint_q, self.target_joint_qd, 1.0 / self.frame_dt],
++        )
++
++        self.soft_solver.rebuild_bvh(self.state_0)
++        for _step in range(self.sim_substeps):
++            self.state_0.clear_forces()
++            self.state_1.clear_forces()
++
++            self.viewer.apply_forces(self.state_0)
++
++            # Featherstone as kinematic integrator (disable particles + gravity)
++            particle_count = self.model.particle_count
++            self.model.particle_count = 0
++            self.model.gravity.assign(self.gravity_zero)
++            self.model.shape_contact_pair_count = 0
++
++            self.state_0.joint_qd.assign(self.target_joint_qd)
++            self.robot_solver.step(self.state_0, self.state_1, self.control, None, self.sim_dt)
++
++            self.state_0.particle_f.zero_()
++            self.model.particle_count = particle_count
++            self.model.gravity.assign(self.gravity_earth)
++
++            # collision detection
++            self.collision_pipeline.collide(self.state_0, self.contacts)
++
++            # soft body sim
++            self.soft_solver.step(self.state_0, self.state_1, self.control, self.contacts, self.sim_dt)
++
++            self.state_0, self.state_1 = self.state_1, self.state_0
++            self.sim_time += self.sim_dt
++
++    def render(self):
++        if self.viewer is None:
++            return
++
++        self.viewer.begin_frame(self.sim_time)
++        self.viewer.log_state(self.state_0)
++        self.viewer.end_frame()
++
++    def test_final(self):
++        p_lower = wp.vec3(-0.5, -1.0, -0.05)
++        p_upper = wp.vec3(0.5, 0.0, 0.6)
++        newton.examples.test_particle_state(
++            self.state_0,
++            "particles are within a reasonable volume",
++            lambda q, qd: newton.math.vec_inside_limits(q, p_lower, p_upper),
++        )
++        newton.examples.test_particle_state(
++            self.state_0,
++            "particle velocities are within a reasonable range",
++            lambda q, qd: max(abs(qd)) < 2.0,
++        )
++        newton.examples.test_body_state(
++            self.model,
++            self.state_0,
++            "body velocities are within a reasonable range",
++            lambda q, qd: max(abs(qd)) < 0.7,
++        )
++
++
++if __name__ == "__main__":
++    parser = newton.examples.create_parser()
++    parser.set_defaults(num_frames=1000)
++    viewer, args = newton.examples.init(parser)
++
++    example = Example(viewer, args)
++
++    newton.examples.run(example, args)
+diff --git a/newton/usd.py b/newton/usd.py
+index 76c05518..c0f76c52 100644
+--- a/newton/usd.py
++++ b/newton/usd.py
+@@ -23,6 +23,7 @@ resolver types used by :meth:`newton.ModelBuilder.add_usd`.
+ # USD utility functions
+ # ==================================================================================
+ from ._src.usd.utils import (
++    find_tetmesh_prims,
+     get_attribute,
+     get_attributes_in_namespace,
+     get_custom_attribute_declarations,
+@@ -32,6 +33,7 @@ from ._src.usd.utils import (
+     get_mesh,
+     get_quat,
+     get_scale,
++    get_tetmesh,
+     get_transform,
+     has_applied_api_schema,
+     has_attribute,
+@@ -40,6 +42,7 @@ from ._src.usd.utils import (
+ )
+ 
+ __all__ = [
++    "find_tetmesh_prims",
+     "get_attribute",
+     "get_attributes_in_namespace",
+     "get_custom_attribute_declarations",
+@@ -49,6 +52,7 @@ __all__ = [
+     "get_mesh",
+     "get_quat",
+     "get_scale",
++    "get_tetmesh",
+     "get_transform",
+     "has_applied_api_schema",
+     "has_attribute",
+

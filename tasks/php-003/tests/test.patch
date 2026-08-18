@@ -1,0 +1,16 @@
+diff --git a/tests/Fixer/Casing/ConstantCaseFixerTest.php b/tests/Fixer/Casing/ConstantCaseFixerTest.php
+index 473993eac..f864d29c8 100644
+--- a/tests/Fixer/Casing/ConstantCaseFixerTest.php
++++ b/tests/Fixer/Casing/ConstantCaseFixerTest.php
+@@ -101,6 +101,10 @@ public static function provideFixCases(): iterable
+ 
+         yield ['<?php $foo instanceof True; $foo instanceof False; $foo instanceof Null;'];
+ 
++        yield ['<?php return Null\Foo::class;'];
++
++        yield ['<?php return Null\Foo::bar();'];
++
+         yield [
+             '<?php
+     class Foo
+

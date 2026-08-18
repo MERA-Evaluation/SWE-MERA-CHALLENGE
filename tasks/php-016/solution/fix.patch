@@ -1,0 +1,121 @@
+diff --git a/lib/Config/AbstractConfigKeys.php b/lib/Config/AbstractConfigKeys.php
+index 95331bb72..040aa78ad 100644
+--- a/lib/Config/AbstractConfigKeys.php
++++ b/lib/Config/AbstractConfigKeys.php
+@@ -1,5 +1,7 @@
+ <?php
+ 
++require_once(ROOT_DIR . 'lib/Config/ConfigKeysMeta.php');
++
+ abstract class AbstractConfigKeys
+ {
+     /** @var array<class-string, array> */
+@@ -120,13 +122,11 @@ abstract class AbstractConfigKeys
+ 
+     public static function hasEnv($config): bool
+     {
+-        $key = $config['key'] ?? null;
+-        if (!is_string($key) || $key === '') {
++        $envKey = ConfigKeysMeta::envKeyForConfig(config: $config);
++        if ($envKey === null) {
+             return false;
+         }
+ 
+-        $envKey = strtoupper('LB_' . preg_replace('/[.\-]+/', '_', $key));
+-
+         return getenv($envKey) !== false;
+     }
+ 
+diff --git a/lib/Config/ConfigKeysMeta.php b/lib/Config/ConfigKeysMeta.php
+index 7fdba327c..e1463a0db 100644
+--- a/lib/Config/ConfigKeysMeta.php
++++ b/lib/Config/ConfigKeysMeta.php
+@@ -2,6 +2,34 @@
+ 
+ class ConfigKeysMeta
+ {
++    /**
++     * Return the canonical config key name for an entry.
++     *
++     * Plugin entries with a section use the fully qualified section.key name.
++     */
++    public static function canonicalKeyName(array $config): ?string
++    {
++        $key = $config['key'] ?? null;
++        if (!is_string($key) || $key === '') {
++            return null;
++        }
++
++        $section = $config['section'] ?? null;
++        if (is_string($section) && $section !== '') {
++            // Main config entries already store fully qualified keys like
++            // "reservation.start.time.constraint" and use "section" only for grouping.
++            if (str_starts_with($key, $section . '.')) {
++                return $key;
++            }
++
++            // Plugin config entries store the leaf key plus a separate section, so
++            // their canonical name needs to be reconstructed as "section.key".
++            return "{$section}.{$key}";
++        }
++
++        return $key;
++    }
++
+     /**
+      * Get the comment text for a config entry.
+      *
+@@ -69,13 +97,16 @@ class ConfigKeysMeta
+     }
+ 
+     /**
+-     * Derive the environment variable name for a config key.
+-     *
+-     * Matches the logic in AbstractConfigKeys::hasEnv().
++     * Derive the environment variable name for a config entry definition.
+      */
+-    public static function envKey(string $configKey): string
++    public static function envKeyForConfig(array $config): ?string
+     {
+-        return strtoupper('LB_' . preg_replace('/[.\-]+/', '_', $configKey));
++        $canonicalKey = self::canonicalKeyName(config: $config);
++        if ($canonicalKey === null) {
++            return null;
++        }
++
++        return strtoupper('LB_' . preg_replace('/[.\-]+/', '_', $canonicalKey));
+     }
+ 
+     public const SECTION_TITLES = [
+diff --git a/lib/Config/Configuration.php b/lib/Config/Configuration.php
+index 895b82fef..a4e6a1a07 100644
+--- a/lib/Config/Configuration.php
++++ b/lib/Config/Configuration.php
+@@ -525,8 +525,8 @@ class ConfigurationFile implements IConfigurationFile
+         $section = $configDef['section'] ?? null;
+         $converter = $converter ?? $this->GetDefaultConverter($configDef);
+ 
+-        $envKey = strtoupper('LB_' . preg_replace('/[.\-]+/', '_', $configDef['key']));
+-        $envValue = env($envKey);
++        $envKey = ConfigKeysMeta::envKeyForConfig(config: $configDef);
++        $envValue = $envKey !== null ? env($envKey) : null;
+ 
+         if (!empty($envValue)) {
+             $value = $envValue;
+diff --git a/lib/Config/EnvExampleGenerator.php b/lib/Config/EnvExampleGenerator.php
+index 6050872a4..0ecb3d4af 100644
+--- a/lib/Config/EnvExampleGenerator.php
++++ b/lib/Config/EnvExampleGenerator.php
+@@ -138,7 +138,10 @@ class EnvExampleGenerator
+         $comment = ConfigKeysMeta::getComment(entry: $entry);
+         $choices = $entry['choices'] ?? null;
+         $type = $entry['type'] ?? 'string';
+-        $envKey = ConfigKeysMeta::envKey(configKey: $entry['key']);
++        $envKey = ConfigKeysMeta::envKeyForConfig(config: $entry);
++        if ($envKey === null) {
++            throw new \LogicException('Env example entry is missing a canonical config key name.');
++        }
+ 
+         if ($comment !== '') {
+             $hasExplicitComment = isset($entry['config_file_comment']) && $entry['config_file_comment'] !== '';
+

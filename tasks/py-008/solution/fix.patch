@@ -1,0 +1,50 @@
+diff --git a/weasyprint/layout/flex.py b/weasyprint/layout/flex.py
+index 748d1fec..b6ee108d 100644
+--- a/weasyprint/layout/flex.py
++++ b/weasyprint/layout/flex.py
+@@ -937,6 +937,9 @@ def flex_layout(context, box, bottom_space, skip_stack, containing_block, page_i
+             absolute_layout(
+                 context, absolute_box, box, fixed_boxes, bottom_space, skip_stack=None)
+ 
++    for child in box.children:
++        block.relative_positioning(child, (box.width, box.height))
++
+     # TODO: Use real algorithm, see https://www.w3.org/TR/css-flexbox-1/#flex-baselines.
+     if isinstance(box, boxes.InlineFlexBox):
+         if main == 'width':  # and main text direction is horizontal
+diff --git a/weasyprint/layout/grid.py b/weasyprint/layout/grid.py
+index 1d2d97eb..6f4f8a7c 100644
+--- a/weasyprint/layout/grid.py
++++ b/weasyprint/layout/grid.py
+@@ -579,6 +579,10 @@ def grid_layout(context, box, bottom_space, skip_stack, containing_block,
+     if skip_stack and box.style['box_decoration_break'] != 'clone':
+         box.remove_decoration(start=True, end=False)
+ 
++    if box.style['position'] == 'relative':
++        # New containing block, use a new absolute list
++        absolute_boxes = []
++
+     # Define explicit grid
+     grid_areas = box.style['grid_template_areas']
+     flow = box.style['grid_auto_flow']
+@@ -1372,6 +1376,19 @@ def grid_layout(context, box, bottom_space, skip_stack, containing_block,
+         LOGGER.warning('Inline grids are not supported')
+         box.baseline = baseline or 0
+ 
++    from .absolute import absolute_layout
++    from .block import relative_positioning
++
++    if box.style['position'] == 'relative':
++        # New containing block, resolve the layout of the absolute descendants
++        for absolute_box in absolute_boxes:
++            absolute_layout(
++                context, absolute_box, box, fixed_boxes, bottom_space,
++                skip_stack=None)
++
++    for child in box.children:
++        relative_positioning(child, (box.width, box.height))
++
+     # Resume early when there’s no resume_at.
+     if not resume_at:
+         context.finish_block_formatting_context(box)
+

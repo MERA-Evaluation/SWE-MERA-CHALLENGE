@@ -1,0 +1,30 @@
+schema_version = "1.3"
+
+[task]
+name = "swemera/py-010"
+description = "SWE Mera Challenge task py-010 (python, medium): resolve the issue in /testbed so the hidden tests pass."
+keywords = ["python", "issue-resolving", "swe-mera", "medium"]
+[metadata]
+task_id = "py-010"
+difficulty = "medium"
+difficulty_score = 0.4
+category = "software-development"
+language = "python"
+kind = "contest"
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:fib-international-structuralcodes-332
+build_timeout_sec = 3600
+network_mode = "public"
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600

@@ -1,0 +1,31 @@
+schema_version = "1.3"
+
+[task]
+name = "swemera/php-004"
+description = "SWE Mera Challenge task php-004 (php, easy): resolve the issue in /testbed so the hidden tests pass."
+keywords = ["php", "issue-resolving", "swe-mera", "easy"]
+
+[metadata]
+task_id = "php-004"
+difficulty = "easy"
+difficulty_score = 0.3
+category = "software-development"
+language = "php"
+kind = "contest"
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:php-cs-fixer-php-cs-fixer-8767
+build_timeout_sec = 3600
+network_mode = "public"
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600

@@ -1,0 +1,68 @@
+diff --git a/phpstan-baseline.neon b/phpstan-baseline.neon
+index fd36d62..f1da224 100644
+--- a/phpstan-baseline.neon
++++ b/phpstan-baseline.neon
+@@ -1704,12 +1704,6 @@ parameters:
+ 			count: 1
+ 			path: src/Infer/Services/ShallowTypeResolver.php
+ 
+-		-
+-			message: '#^Parameter \#1 \$value of class Dedoc\\Scramble\\Support\\Type\\Literal\\LiteralStringType constructor expects string, Dedoc\\Scramble\\Support\\Type\\Type\|string given\.$#'
+-			identifier: argument.type
+-			count: 1
+-			path: src/Infer/SimpleTypeGetters/ClassConstFetchTypeGetter.php
+-
+ 		-
+ 			message: '#^Cannot access property \$parentScope on Dedoc\\Scramble\\Infer\\Scope\\Scope\|null\.$#'
+ 			identifier: property.nonObject
+diff --git a/src/Infer/SimpleTypeGetters/ClassConstFetchTypeGetter.php b/src/Infer/SimpleTypeGetters/ClassConstFetchTypeGetter.php
+index 5d9e0ae..fdee6a7 100644
+--- a/src/Infer/SimpleTypeGetters/ClassConstFetchTypeGetter.php
++++ b/src/Infer/SimpleTypeGetters/ClassConstFetchTypeGetter.php
+@@ -9,6 +9,7 @@ use Dedoc\Scramble\Support\Type\Reference\ConstFetchReferenceType;
+ use Dedoc\Scramble\Support\Type\Reference\NewCallReferenceType;
+ use Dedoc\Scramble\Support\Type\Reference\StaticReference;
+ use Dedoc\Scramble\Support\Type\StringType;
++use Dedoc\Scramble\Support\Type\TemplateType;
+ use Dedoc\Scramble\Support\Type\Type;
+ use Dedoc\Scramble\Support\Type\UnknownType;
+ use PhpParser\Node;
+@@ -24,8 +25,11 @@ class ClassConstFetchTypeGetter
+ 
+             $type = $scope->getType($node->class);
+ 
+-            if ($type instanceof ObjectType || $type instanceof NewCallReferenceType) {
+-                return new LiteralStringType($type->name);
++            if (
++                ($type instanceof ObjectType || $type instanceof NewCallReferenceType)
++                && $className = $this->getClassName($type)
++            ) {
++                return new LiteralStringType($className);
+             }
+         }
+ 
+@@ -51,4 +55,23 @@ class ClassConstFetchTypeGetter
+ 
+         return new UnknownType('Cannot get type from class const fetch');
+     }
++
++    private function getClassName(ObjectType|NewCallReferenceType $type): ?string
++    {
++        if ($type instanceof ObjectType) {
++            return $type->name;
++        }
++
++        if (is_string($type->name)) {
++            return $type->name;
++        }
++
++        $typeName = $type->name;
++
++        if ($typeName instanceof TemplateType && $typeName->is instanceof ObjectType) {
++            return $typeName->is->name;
++        }
++
++        return null;
++    }
+ }
+

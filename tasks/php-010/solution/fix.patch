@@ -1,0 +1,77 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index ccdfc1d..e352594 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -23,6 +23,7 @@ Please also have a look at our
+ 
+ ### Fixed
+ 
++- Allow `removeDeclarationBlockBySelector()` to be order-insensitve (#1406)
+ - Fix parsing of `calc` expressions when a newline immediately precedes or
+   follows a `+` or `-` operator (#1399)
+ - Use typesafe versions of PHP functions (#1379, #1380, #1382, #1383, #1384)
+diff --git a/config/phpstan-baseline.neon b/config/phpstan-baseline.neon
+index 6205096..4c4add4 100644
+--- a/config/phpstan-baseline.neon
++++ b/config/phpstan-baseline.neon
+@@ -1,11 +1,5 @@
+ parameters:
+ 	ignoreErrors:
+-		-
+-			message: '#^Loose comparison via "\=\=" is not allowed\.$#'
+-			identifier: equal.notAllowed
+-			count: 1
+-			path: ../src/CSSList/CSSList.php
+-
+ 		-
+ 			message: '#^Parameter \#2 \$found of class Sabberworm\\CSS\\Parsing\\UnexpectedTokenException constructor expects string, Sabberworm\\CSS\\Value\\CSSFunction\|Sabberworm\\CSS\\Value\\CSSString\|Sabberworm\\CSS\\Value\\LineName\|Sabberworm\\CSS\\Value\\Size\|Sabberworm\\CSS\\Value\\URL given\.$#'
+ 			identifier: argument.type
+diff --git a/src/CSSList/CSSList.php b/src/CSSList/CSSList.php
+index e09a03a..56495f3 100644
+--- a/src/CSSList/CSSList.php
++++ b/src/CSSList/CSSList.php
+@@ -370,7 +370,7 @@ abstract class CSSList implements CSSElement, CSSListItem, Positionable
+             if (!($item instanceof DeclarationBlock)) {
+                 continue;
+             }
+-            if ($item->getSelectors() == $selectors) {
++            if (self::selectorsMatch($item->getSelectors(), $selectors)) {
+                 unset($this->contents[$key]);
+                 if (!$removeAll) {
+                     return;
+@@ -427,4 +427,34 @@ abstract class CSSList implements CSSElement, CSSListItem, Positionable
+     {
+         return $this->contents;
+     }
++
++    /**
++     * @param list<Selector> $selectors1
++     * @param list<Selector> $selectors2
++     */
++    private static function selectorsMatch(array $selectors1, array $selectors2): bool
++    {
++        $selectorStrings1 = self::getSelectorStrings($selectors1);
++        $selectorStrings2 = self::getSelectorStrings($selectors2);
++
++        \sort($selectorStrings1);
++        \sort($selectorStrings2);
++
++        return $selectorStrings1 === $selectorStrings2;
++    }
++
++    /**
++     * @param list<Selector> $selectors
++     *
++     * @return list<string>
++     */
++    private static function getSelectorStrings(array $selectors): array
++    {
++        return \array_map(
++            static function (Selector $selector): string {
++                return $selector->getSelector();
++            },
++            $selectors
++        );
++    }
+ }
+

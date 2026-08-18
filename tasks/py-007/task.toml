@@ -1,0 +1,31 @@
+schema_version = "1.3"
+
+[task]
+name = "swemera/py-007"
+description = "SWE Mera Challenge task py-007 (python, easy): resolve the issue in /testbed so the hidden tests pass."
+keywords = ["python", "issue-resolving", "swe-mera", "easy"]
+
+[metadata]
+task_id = "py-007"
+difficulty = "easy"
+difficulty_score = 0.15
+category = "software-development"
+language = "python"
+kind = "contest"
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:sooperset-mcp-atlassian-901
+build_timeout_sec = 3600
+network_mode = "public"
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600

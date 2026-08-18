@@ -1,0 +1,456 @@
+diff --git a/tests/PhpSpreadsheetTests/Reader/Html/HtmlTest.php b/tests/PhpSpreadsheetTests/Reader/Html/HtmlTest.php
+index a61f90113..6a8f2a6b9 100644
+--- a/tests/PhpSpreadsheetTests/Reader/Html/HtmlTest.php
++++ b/tests/PhpSpreadsheetTests/Reader/Html/HtmlTest.php
+@@ -199,7 +199,7 @@ class HtmlTest extends TestCase
+                         <td valign="center">Center valign</td>
+                         <td style="text-align: center;">Center align</td>
+                         <td style="vertical-align: center;">Center valign</td>
+-                        <td style="text-indent: 10px;">Text indent</td>
++                        <td style="text-indent: 9px;">Text indent</td>
+                         <td style="word-wrap: break-word;">Wraptext</td>
+                     </tr>
+                 </table>';
+@@ -220,7 +220,7 @@ class HtmlTest extends TestCase
+         self::assertEquals(Alignment::VERTICAL_CENTER, $style->getAlignment()->getVertical());
+ 
+         $style = $firstSheet->getCell('E1')->getStyle();
+-        self::assertEquals(10, $style->getAlignment()->getIndent());
++        self::assertEquals(1, $style->getAlignment()->getIndent());
+ 
+         $style = $firstSheet->getCell('F1')->getStyle();
+         self::assertTrue($style->getAlignment()->getWrapText());
+@@ -302,14 +302,14 @@ class HtmlTest extends TestCase
+                   </tr>
+                   <tr>
+                     <td>2</td>
+-                    <td style="text-indent:10px">Text Indent</td>
++                    <td style="text-indent:9px">Text Indent</td>
+                   </tr>
+                 </table>';
+         $filename = HtmlHelper::createHtml($html);
+         $spreadsheet = HtmlHelper::loadHtmlIntoSpreadsheet($filename, true);
+         $firstSheet = $spreadsheet->getSheet(0);
+         $style = $firstSheet->getCell('C2')->getStyle();
+-        self::assertEquals(10, $style->getAlignment()->getIndent());
++        self::assertEquals(1, $style->getAlignment()->getIndent());
+         $spreadsheet->disconnectWorksheets();
+     }
+ 
+diff --git a/tests/PhpSpreadsheetTests/Reader/Xlsx/Issue4248Test.php b/tests/PhpSpreadsheetTests/Reader/Xlsx/Issue4248Test.php
+index 01c25edaf..c2b8720ad 100644
+--- a/tests/PhpSpreadsheetTests/Reader/Xlsx/Issue4248Test.php
++++ b/tests/PhpSpreadsheetTests/Reader/Xlsx/Issue4248Test.php
+@@ -93,7 +93,7 @@ class Issue4248Test extends TestCase
+         $data = str_replace(["\r", "\n"], '', $writer->generateHtmlAll());
+         $expected = '          <tr class="row17">' // Cell D18
+             . '            <td class="column0 style0">&nbsp;</td>'
+-            . '            <td class="column1 style28 null"></td>'
++            . '            <td class="column1 style28 null">&nbsp;</td>'
+             . '            <td class="column2 style35 s">Eligible </td>'
+             . '            <td class="column3 style70 s">Non</td>';
+         self::assertStringContainsString($expected, $data, 'Cell D18 style');
+diff --git a/tests/PhpSpreadsheetTests/Reader/Xml/ReadOrderTest.php b/tests/PhpSpreadsheetTests/Reader/Xml/ReadOrderTest.php
+new file mode 100644
+index 000000000..0c7618e5f
+--- /dev/null
++++ b/tests/PhpSpreadsheetTests/Reader/Xml/ReadOrderTest.php
+@@ -0,0 +1,39 @@
++<?php
++
++declare(strict_types=1);
++
++namespace PhpOffice\PhpSpreadsheetTests\Reader\Xml;
++
++use PhpOffice\PhpSpreadsheet\Reader\Xml as XmlReader;
++use PhpOffice\PhpSpreadsheet\Style\Alignment;
++use PhpOffice\PhpSpreadsheetTests\Functional\AbstractFunctional;
++
++class ReadOrderTest extends AbstractFunctional
++{
++    public function testReadOrder(): void
++    {
++        // Issue 850 - Xls Reader/Writer didn't support Alignment ReadOrder
++        $infile = 'tests/data/Reader/Xml/issue.850.xml';
++        $reader = new XmlReader();
++        $robj = $reader->load($infile);
++
++        $sheet0 = $robj->setActiveSheetIndex(0);
++        self::assertSame(
++            Alignment::READORDER_RTL,
++            $sheet0->getStyle('A1')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            Alignment::READORDER_LTR,
++            $sheet0->getStyle('A2')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            Alignment::READORDER_CONTEXT,
++            $sheet0->getStyle('A3')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            2,
++            $sheet0->getStyle('A5')->getAlignment()->getIndent()
++        );
++        $robj->disconnectWorksheets();
++    }
++}
+diff --git a/tests/PhpSpreadsheetTests/Writer/Html/HtmlColourScaleTest.php b/tests/PhpSpreadsheetTests/Writer/Html/HtmlColourScaleTest.php
+index 87a9fb698..036fe33fe 100644
+--- a/tests/PhpSpreadsheetTests/Writer/Html/HtmlColourScaleTest.php
++++ b/tests/PhpSpreadsheetTests/Writer/Html/HtmlColourScaleTest.php
+@@ -57,7 +57,7 @@ class HtmlColourScaleTest extends TestCase
+             ['G3', 'background-color:#EC926F;">7<', 'cell G3'],
+             ['H3', 'background-color:#E67C73;">8<', 'cell H3'],
+             ['A4', 'background-color:#57BB8A;">1<', 'cell A4'],
+-            ['I4', 'null"><', 'empty cell I4'],
++            ['I4', 'null">&nbsp;<', 'empty cell I4'],
+             ['J4', 'background-color:#E67C73;">10<', 'cell J4'],
+         ];
+         foreach ($expectedMatches as $expected) {
+diff --git a/tests/PhpSpreadsheetTests/Writer/Html/HtmlNumberFormatTest.php b/tests/PhpSpreadsheetTests/Writer/Html/HtmlNumberFormatTest.php
+index 6044b1d2b..5ab5b99be 100644
+--- a/tests/PhpSpreadsheetTests/Writer/Html/HtmlNumberFormatTest.php
++++ b/tests/PhpSpreadsheetTests/Writer/Html/HtmlNumberFormatTest.php
+@@ -151,6 +151,7 @@ class HtmlNumberFormatTest extends Functional\AbstractFunctional
+ 
+         $writer = new Html($spreadsheet);
+         $html = $writer->generateHTMLAll();
++        $html = str_replace('>&nbsp;<', '><', $html); // clear empty cells
+         $dom = new DOMDocument();
+         $dom->loadHTML($html);
+         $body = $dom->getElementsByTagName('body')->item(0);
+diff --git a/tests/PhpSpreadsheetTests/Writer/Html/ReadOrderTest.php b/tests/PhpSpreadsheetTests/Writer/Html/ReadOrderTest.php
+new file mode 100644
+index 000000000..9efabbe8f
+--- /dev/null
++++ b/tests/PhpSpreadsheetTests/Writer/Html/ReadOrderTest.php
+@@ -0,0 +1,121 @@
++<?php
++
++declare(strict_types=1);
++
++namespace PhpOffice\PhpSpreadsheetTests\Writer\Html;
++
++use PhpOffice\PhpSpreadsheet\Reader\Html as HtmlReader;
++use PhpOffice\PhpSpreadsheet\Spreadsheet;
++use PhpOffice\PhpSpreadsheet\Style\Alignment;
++use PhpOffice\PhpSpreadsheet\Writer\Html as HtmlWriter;
++use PHPUnit\Framework\TestCase;
++
++class ReadOrderTest extends TestCase
++{
++    public function testInline(): void
++    {
++        $spreadsheet = new Spreadsheet();
++        $sheet = $spreadsheet->getActiveSheet();
++        $sheet->setCellValue('A1', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A2', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A3', '1-' . 'منصور حسين الناصر');
++        $sheet->getStyle('A1')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_RTL);
++        $sheet->getStyle('A2')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_LTR);
++        $sheet->getStyle('A2')->getFont()->setName('Arial');
++        $sheet->getStyle('A3')->getFont()->setName('Times New Roman');
++        $sheet->setCellValue('A5', 'hello');
++        $sheet->getStyle('A5')->getFont()->setName('Tahoma');
++        $sheet->getStyle('A5')
++            ->getAlignment()->setIndent(2);
++        $writer = new HtmlWriter($spreadsheet);
++        $writer->setUseInlineCss(true);
++        $html = $writer->generateHtmlAll();
++        self::assertStringContainsString(
++            '<td class="gridlines" style="vertical-align:bottom; direction:rtl; color:#000000; font-family:\'Calibri\';',
++            $html
++        );
++        self::assertStringContainsString(
++            '<td class="gridlines" style="vertical-align:bottom; direction:ltr; color:#000000; font-family:\'Arial\';',
++            $html
++        );
++        self::assertStringContainsString(
++            '<td class="gridlines" style="vertical-align:bottom; color:#000000; font-family:\'Times New Roman\';',
++            $html
++        );
++        self::assertStringContainsString(
++            '>&nbsp;</td>',
++            $html
++        );
++        self::assertStringContainsString(
++            '<td class="gridlines" style="vertical-align:bottom; text-indent:18px; color:#000000; font-family:\'Tahoma\';',
++            $html
++        );
++        $spreadsheet->disconnectWorksheets();
++
++        $reader = new HtmlReader();
++        $spreadsheet2 = $reader->loadFromString($html);
++        $sheet0 = $spreadsheet2->getActiveSheet();
++        self::assertSame(
++            Alignment::READORDER_RTL,
++            $sheet0->getStyle('A1')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            Alignment::READORDER_LTR,
++            $sheet0->getStyle('A2')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            Alignment::READORDER_CONTEXT,
++            $sheet0->getStyle('A3')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            2,
++            $sheet0->getStyle('A5')->getAlignment()->getIndent()
++        );
++        $spreadsheet2->disconnectWorksheets();
++    }
++
++    public function testNotInline(): void
++    {
++        $spreadsheet = new Spreadsheet();
++        $sheet = $spreadsheet->getActiveSheet();
++        $sheet->setCellValue('A1', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A2', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A3', '1-' . 'منصور حسين الناصر');
++        $sheet->getStyle('A1')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_RTL);
++        $sheet->getStyle('A2')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_LTR);
++        $sheet->getStyle('A2')->getFont()->setName('Arial');
++        $sheet->getStyle('A3')->getFont()->setName('Times New Roman');
++        $sheet->setCellValue('A5', 'hello');
++        $sheet->getStyle('A5')->getFont()->setName('Tahoma');
++        $sheet->getStyle('A5')
++            ->getAlignment()->setIndent(2);
++        $writer = new HtmlWriter($spreadsheet);
++        $html = $writer->generateHtmlAll();
++        self::assertStringContainsString(
++            'td.style1, th.style1 { vertical-align:bottom; direction:rtl; border-bottom',
++            $html
++        );
++        self::assertStringContainsString(
++            'td.style2, th.style2 { vertical-align:bottom; direction:ltr; border-bottom',
++            $html
++        );
++        self::assertStringContainsString(
++            'td.style3, th.style3 { vertical-align:bottom; border-bottom',
++            $html
++        );
++        self::assertStringContainsString(
++            '>&nbsp;</td>',
++            $html
++        );
++        self::assertStringContainsString(
++            'td.style4, th.style4 { vertical-align:bottom; text-indent:18px;',
++            $html
++        );
++        $spreadsheet->disconnectWorksheets();
++        // PhpSpreadsheet does not read non-inline styles
++    }
++}
+diff --git a/tests/PhpSpreadsheetTests/Writer/Ods/ReadOrderTest.php b/tests/PhpSpreadsheetTests/Writer/Ods/ReadOrderTest.php
+new file mode 100644
+index 000000000..acd06b6ad
+--- /dev/null
++++ b/tests/PhpSpreadsheetTests/Writer/Ods/ReadOrderTest.php
+@@ -0,0 +1,52 @@
++<?php
++
++declare(strict_types=1);
++
++namespace PhpOffice\PhpSpreadsheetTests\Writer\Ods;
++
++use PhpOffice\PhpSpreadsheet\Spreadsheet;
++use PhpOffice\PhpSpreadsheet\Style\Alignment;
++use PhpOffice\PhpSpreadsheet\Writer\Ods;
++use PhpOffice\PhpSpreadsheet\Writer\Ods\Content;
++use PHPUnit\Framework\TestCase;
++
++class ReadOrderTest extends TestCase
++{
++    public function testReadOrder(): void
++    {
++        $spreadsheet = new Spreadsheet();
++        $sheet = $spreadsheet->getActiveSheet();
++        $sheet->setCellValue('A1', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A2', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A3', '1-' . 'منصور حسين الناصر');
++        $sheet->getStyle('A1')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_RTL);
++        $sheet->getStyle('A2')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_LTR);
++        $sheet->getStyle('A2')->getFont()->setName('Arial');
++        $sheet->getStyle('A3')->getFont()->setName('Times New Roman');
++        $content = new Content(new Ods($spreadsheet));
++        $xml = $content->write();
++        self::assertStringContainsString(
++            '<style:table-cell-properties style:vertical-align="bottom" style:rotation-align="none"/>'
++                . '<style:paragraph-properties style:writing-mode="rl-tb"/>'
++                . '<style:text-properties fo:color="#000000" fo:font-family="Calibri"',
++            $xml,
++            'explicit rtl direction in paragraph properties'
++        );
++        self::assertStringContainsString(
++            '<style:table-cell-properties style:vertical-align="bottom" style:rotation-align="none"/>'
++                . '<style:paragraph-properties style:writing-mode="lr-tb"/>'
++                . '<style:text-properties fo:color="#000000" fo:font-family="Arial"',
++            $xml,
++            'explicit ltr direction in paragraph properties'
++        );
++        self::assertStringContainsString(
++            '<style:table-cell-properties style:vertical-align="bottom" style:rotation-align="none"/>'
++                . '<style:text-properties fo:color="#000000" fo:font-family="Times New Roman"',
++            $xml,
++            'no paragraph properties'
++        );
++        $spreadsheet->disconnectWorksheets();
++    }
++}
+diff --git a/tests/PhpSpreadsheetTests/Writer/Xls/ReadOrderTest.php b/tests/PhpSpreadsheetTests/Writer/Xls/ReadOrderTest.php
+new file mode 100644
+index 000000000..a0b1b20d6
+--- /dev/null
++++ b/tests/PhpSpreadsheetTests/Writer/Xls/ReadOrderTest.php
+@@ -0,0 +1,51 @@
++<?php
++
++declare(strict_types=1);
++
++namespace PhpOffice\PhpSpreadsheetTests\Writer\Xls;
++
++use PhpOffice\PhpSpreadsheet\Spreadsheet;
++use PhpOffice\PhpSpreadsheet\Style\Alignment;
++use PhpOffice\PhpSpreadsheetTests\Functional\AbstractFunctional;
++
++class ReadOrderTest extends AbstractFunctional
++{
++    public function testBooleanLiteral(): void
++    {
++        // Issue 850 - Xls Reader/Writer didn't support Alignment ReadOrder
++        $spreadsheet = new Spreadsheet();
++        $sheet = $spreadsheet->getActiveSheet();
++        $sheet->setCellValue('A1', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A2', '1-' . 'منصور حسين الناصر');
++        $sheet->setCellValue('A3', '1-' . 'منصور حسين الناصر');
++        $sheet->getStyle('A1')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_RTL);
++        $sheet->getStyle('A2')
++            ->getAlignment()->setReadOrder(Alignment::READORDER_LTR);
++
++        $sheet->setCellValue('A5', 'hello');
++        $spreadsheet->getActiveSheet()->getStyle('A5')
++            ->getAlignment()->setIndent(2);
++
++        $robj = $this->writeAndReload($spreadsheet, 'Xls');
++        $spreadsheet->disconnectWorksheets();
++        $sheet0 = $robj->setActiveSheetIndex(0);
++        self::assertSame(
++            Alignment::READORDER_RTL,
++            $sheet0->getStyle('A1')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            Alignment::READORDER_LTR,
++            $sheet0->getStyle('A2')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            Alignment::READORDER_CONTEXT,
++            $sheet0->getStyle('A3')->getAlignment()->getReadOrder()
++        );
++        self::assertSame(
++            2,
++            $sheet0->getStyle('A5')->getAlignment()->getIndent()
++        );
++        $robj->disconnectWorksheets();
++    }
++}
+diff --git a/tests/data/Reader/Xml/issue.850.xml b/tests/data/Reader/Xml/issue.850.xml
+new file mode 100644
+index 000000000..314034cb6
+--- /dev/null
++++ b/tests/data/Reader/Xml/issue.850.xml
+@@ -0,0 +1,85 @@
++<?xml version="1.0"?>
++<?mso-application progid="Excel.Sheet"?>
++<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
++ xmlns:o="urn:schemas-microsoft-com:office:office"
++ xmlns:x="urn:schemas-microsoft-com:office:excel"
++ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
++ xmlns:html="http://www.w3.org/TR/REC-html40">
++ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
++  <Title>Untitled Spreadsheet</Title>
++  <Author>Unknown Creator</Author>
++  <LastAuthor>Owen Leibman</LastAuthor>
++  <Created>2025-09-19T18:05:38Z</Created>
++  <LastSaved>2025-09-19T18:05:38Z</LastSaved>
++  <Version>16.00</Version>
++ </DocumentProperties>
++ <OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">
++  <AllowPNG/>
++ </OfficeDocumentSettings>
++ <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
++  <WindowHeight>6510</WindowHeight>
++  <WindowWidth>19200</WindowWidth>
++  <WindowTopX>32767</WindowTopX>
++  <WindowTopY>32767</WindowTopY>
++  <ProtectStructure>False</ProtectStructure>
++  <ProtectWindows>False</ProtectWindows>
++ </ExcelWorkbook>
++ <Styles>
++  <Style ss:ID="Default" ss:Name="Normal">
++   <Alignment ss:Vertical="Bottom"/>
++   <Borders/>
++   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#000000"/>
++   <Interior/>
++   <NumberFormat/>
++   <Protection/>
++  </Style>
++  <Style ss:ID="s16">
++   <Alignment ss:Vertical="Bottom" ss:ReadingOrder="RightToLeft"/>
++  </Style>
++  <Style ss:ID="s17">
++   <Alignment ss:Vertical="Bottom" ss:ReadingOrder="LeftToRight"/>
++  </Style>
++  <Style ss:ID="s18">
++   <Alignment ss:Vertical="Bottom" ss:Indent="2"/>
++  </Style>
++ </Styles>
++ <Worksheet ss:Name="Worksheet">
++  <Table ss:ExpandedColumnCount="1" ss:ExpandedRowCount="5" x:FullColumns="1"
++   x:FullRows="1" ss:DefaultRowHeight="14.5">
++   <Row>
++    <Cell ss:StyleID="s16"><Data ss:Type="String">1-منصور حسين الناصر</Data></Cell>
++   </Row>
++   <Row>
++    <Cell ss:StyleID="s17"><Data ss:Type="String">1-منصور حسين الناصر</Data></Cell>
++   </Row>
++   <Row>
++    <Cell><Data ss:Type="String">1-منصور حسين الناصر</Data></Cell>
++   </Row>
++   <Row ss:Index="5">
++    <Cell ss:StyleID="s18"><Data ss:Type="String">hello</Data></Cell>
++   </Row>
++  </Table>
++  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
++   <PageSetup>
++    <Header x:Margin="0.3"/>
++    <Footer x:Margin="0.3"/>
++    <PageMargins x:Bottom="0.75" x:Left="0.7" x:Right="0.7" x:Top="0.75"/>
++   </PageSetup>
++   <Print>
++    <ValidPrinterInfo/>
++    <NoOrientation/>
++    <HorizontalResolution>600</HorizontalResolution>
++    <VerticalResolution>600</VerticalResolution>
++   </Print>
++   <Selected/>
++   <Panes>
++    <Pane>
++     <Number>3</Number>
++     <ActiveRow>4</ActiveRow>
++    </Pane>
++   </Panes>
++   <ProtectObjects>False</ProtectObjects>
++   <ProtectScenarios>False</ProtectScenarios>
++  </WorksheetOptions>
++ </Worksheet>
++</Workbook>
+

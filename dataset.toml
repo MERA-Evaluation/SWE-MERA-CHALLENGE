@@ -1,0 +1,129 @@
+[dataset]
+name = "swemera/swe-mera-challenge"
+description = "SWE Mera Challenge: 31 issue-resolving tasks (PHP/Python), strict Harbor format, public Docker Hub images."
+authors = []
+keywords = [ "swe-mera", "issue-resolving", "php", "python",]
+
+[[tasks]]
+name = "swemera/php-001"
+digest = "sha256:03bf50bdced16092ce91a1a92aea19e4c0f595db5dd5127c1ee2307b7df562fb"
+
+[[tasks]]
+name = "swemera/php-003"
+digest = "sha256:7157ebe07cb01c5a276f7aa2d0a88dca8890c3817f6370eeaa83a7fa174fe0c9"
+
+[[tasks]]
+name = "swemera/php-004"
+digest = "sha256:47346d9ee56736f9caef0cfa7de7660cf92c983f86606fbbaaa2c03817f78092"
+
+[[tasks]]
+name = "swemera/php-005"
+digest = "sha256:abb51db1e80a578ac93b94bffed56c0d0fd5aebbf068b2fa76a3e49384d06661"
+
+[[tasks]]
+name = "swemera/php-006"
+digest = "sha256:c1e979051c98fa4bf119b9baa6d1c5b61fe7a9e21936bf93a8fc9255e1fc139b"
+
+[[tasks]]
+name = "swemera/php-007"
+digest = "sha256:8fffebc970a8997e3879f35c12795ef730116af8d6aa4cbd83cbc6f98ec45407"
+
+[[tasks]]
+name = "swemera/php-008"
+digest = "sha256:286f07e5f116d0828c1c0f77209244a98e297e718d905abdd34c7591529da8e3"
+
+[[tasks]]
+name = "swemera/php-009"
+digest = "sha256:7579ae6c0147c4b2f8e714262112f4da9ddcbf07009174b48f86d6c8e5bb70a9"
+
+[[tasks]]
+name = "swemera/php-010"
+digest = "sha256:49f9958f2aedea89e8875a9c7ca25529c125f636c272b5b5042d3dc44b272c4c"
+
+[[tasks]]
+name = "swemera/php-011"
+digest = "sha256:6a4afa260a44eebcd3446f2c925b539707bff92ba0e462ed5c79b592395c5d83"
+
+[[tasks]]
+name = "swemera/php-013"
+digest = "sha256:08230363295e2b3972725776311aa5bca250256303c7e8386984b0e79c48d071"
+
+[[tasks]]
+name = "swemera/php-014"
+digest = "sha256:208ad83c76ca207fb61449219f63beb01c889022ca81eb6edee0aced9f622904"
+
+[[tasks]]
+name = "swemera/php-016"
+digest = "sha256:ed6ed663a153d21e6d4497547fb15f799ad221dacc1e4f58888fa4a921ae53ae"
+
+[[tasks]]
+name = "swemera/php-019"
+digest = "sha256:3cb24dc854f31bfec8a4514cd3c15a43d7250778421ebbf1e619bc18643bd1df"
+
+[[tasks]]
+name = "swemera/php-020"
+digest = "sha256:3a31bdfd8f69560b4d5da2c2ca4f87fcf9bc30c67febb74fe62512dc1eb03510"
+
+[[tasks]]
+name = "swemera/py-001"
+digest = "sha256:3b21055524971f91398b1b23c3fd10603bccd7a9253928d4cb95bf38508b5218"
+
+[[tasks]]
+name = "swemera/py-002"
+digest = "sha256:09561c80adfbbb4d62491a52f88c8e48576e5c61dc3aab4f7e1071996ffa56d1"
+
+[[tasks]]
+name = "swemera/py-003"
+digest = "sha256:3f8697f8997ebd4ef098349e11e558bde7cd4ff8359ed8024d77b9ddd9784faa"
+
+[[tasks]]
+name = "swemera/py-005"
+digest = "sha256:8b995f01f8caf25e7c178ad7b1c944f7b603de3eacdf79f3c92a9d1634f3273f"
+
+[[tasks]]
+name = "swemera/py-006"
+digest = "sha256:61071fb3a3ae660b11b56bdb25431f92eec5ab0efe3578bac3a7c21b9d6507c8"
+
+[[tasks]]
+name = "swemera/py-007"
+digest = "sha256:65f5d3ba7511c571e4d3380e85522dd6cbaece1fd808908d365676fd1bf00b31"
+
+[[tasks]]
+name = "swemera/py-008"
+digest = "sha256:b44e7f9a013adb3b30af75eba3b9a6a5b35a44968d75c0f6e81609558f0ad771"
+
+[[tasks]]
+name = "swemera/py-009"
+digest = "sha256:10fc531311528b6aa2624dfccfc2ed38419ce5efb29c9f1484121bf1ae8c470e"
+
+[[tasks]]
+name = "swemera/py-010"
+digest = "sha256:9a52b41fcf632a3d0380bec494c28f0d1f6e2aaf987bc5aa790ad6c0f40c8898"
+
+[[tasks]]
+name = "swemera/py-011"
+digest = "sha256:4230a6f000d7a646910a8cdb641af2c25e07d05e826168a2fe12d81f04975263"
+
+[[tasks]]
+name = "swemera/py-012"
+digest = "sha256:b81e0f67556410382b4c44a07e6856521cd6b6dc4f199b88758d0a0647c4126b"
+
+[[tasks]]
+name = "swemera/py-013"
+digest = "sha256:632322410fd692731085c01cb322c347b3f062bf245fbf31a6e0e1e0c9978395"
+
+[[tasks]]
+name = "swemera/py-015"
+digest = "sha256:995b7c10b7aea678253015fcef9d8d534f30131d56ebf5ae605c9523d2317c02"
+
+[[tasks]]
+name = "swemera/py-016"
+digest = "sha256:d965d6aabec4fd4abcb0de138cd42cd09aa382e56fa501e318150c3265a3f92b"
+
+[[tasks]]
+name = "swemera/py-017"
+digest = "sha256:2caa8d96a611543e1a67806311f11c1bc2dc6234c23fba3e0216b474e15bc201"
+
+[[tasks]]
+name = "swemera/py-020"
+digest = "sha256:af344cbc9224376ba41f5ee0e5fb08991e19c61763268dbbba75792eb096eee8"

@@ -1,0 +1,70 @@
+diff --git a/structuralcodes/__init__.py b/structuralcodes/__init__.py
+index 2e12a34..0810184 100644
+--- a/structuralcodes/__init__.py
++++ b/structuralcodes/__init__.py
+@@ -4,7 +4,7 @@ import warnings
+ 
+ from . import codes, core, geometry, materials, sections
+ from .codes import get_design_codes, set_design_code, set_national_annex
+-from .core.errors import StructuralCodesWarning
++from .core.errors import InformationWarning, StructuralCodesWarning
+ 
+ __version__ = '0.6.4'
+ 
+@@ -20,3 +20,4 @@ __all__ = [
+ ]
+ 
+ warnings.filterwarnings(action='error', category=StructuralCodesWarning)
++warnings.filterwarnings(action='always', category=InformationWarning)
+diff --git a/structuralcodes/core/errors.py b/structuralcodes/core/errors.py
+index 059dd6a..ba985dc 100644
+--- a/structuralcodes/core/errors.py
++++ b/structuralcodes/core/errors.py
+@@ -6,6 +6,16 @@ class StructuralCodesWarning(Warning):
+ 
+ 
+ class NoConvergenceWarning(StructuralCodesWarning):
+-    """A warning that indicates that no convergence was reached for an
+-    iterative solver.
++    """Warning for lack of convergence.
++
++    A warning that indicates that no convergence was reached for an
++    iterative solver. The solution should be inspected with care.
++    """
++
++
++class InformationWarning(StructuralCodesWarning):
++    """Warning for simple information.
++
++    A warning that indicates that some information that should be taken care
++    by user, but the calculation is not invalid.
+     """
+diff --git a/structuralcodes/sections/_generic.py b/structuralcodes/sections/_generic.py
+index 3bb7212..764f3e7 100644
+--- a/structuralcodes/sections/_generic.py
++++ b/structuralcodes/sections/_generic.py
+@@ -21,7 +21,7 @@ from structuralcodes.geometry import (
+ from structuralcodes.materials.basic import ElasticMaterial
+ 
+ from ..core.base import Section, SectionCalculator
+-from ..core.errors import NoConvergenceWarning
++from ..core.errors import InformationWarning, NoConvergenceWarning
+ from .section_integrators import SectionIntegrator, integrator_factory
+ 
+ 
+@@ -149,10 +149,11 @@ class GenericSectionCalculator(SectionCalculator):
+         if isinstance(polygon, MultiPolygon):
+             gp.perimeter = 0.0
+             warnings.warn(
+-                'Perimiter computation for a multi polygon is not defined.'
++                'Perimiter computation for a multi polygon is not defined.',
++                category=InformationWarning,
+             )
+-
+-        gp.perimeter = polygon.exterior.length
++        else:
++            gp.perimeter = polygon.exterior.length
+ 
+         # Computation of area: this is taken directly from shapely
+         gp.area = self.section.geometry.area
+
