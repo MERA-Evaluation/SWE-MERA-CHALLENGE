@@ -1,0 +1,50 @@
+diff --git a/values/convert.go b/values/convert.go
+index d7c8d7e..de14843 100644
+--- a/values/convert.go
++++ b/values/convert.go
+@@ -94,8 +94,19 @@ func Convert(value any, typ reflect.Type) (any, error) { //nolint: gocyclo
+ 		return rv.Convert(typ).Interface(), nil
+ 	}
+ 
+-	if typ == timeType && rv.Kind() == reflect.String {
+-		return ParseDate(value.(string))
++	if typ == timeType {
++		switch rv.Kind() {
++		case reflect.String:
++			return ParseDate(value.(string))
++		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
++			return time.Unix(rv.Int(), 0), nil
++		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
++			return time.Unix(int64(rv.Uint()), 0), nil
++		case reflect.Float32, reflect.Float64:
++			sec := int64(rv.Float())
++			nsec := int64((rv.Float() - float64(sec)) * 1e9)
++			return time.Unix(sec, nsec), nil
++		}
+ 	}
+ 	// currently unused:
+ 	// case reflect.PtrTo(r.Type()) == typ:
+diff --git a/values/parsedate.go b/values/parsedate.go
+index 762e840..f2dfd4c 100644
+--- a/values/parsedate.go
++++ b/values/parsedate.go
+@@ -2,6 +2,7 @@ package values
+ 
+ import (
+ 	"reflect"
++	"strconv"
+ 	"time"
+ )
+ 
+@@ -50,6 +51,10 @@ func ParseDate(s string) (time.Time, error) {
+ 		return time.Now(), nil
+ 	}
+ 
++	if sec, err := strconv.ParseInt(s, 10, 64); err == nil {
++		return time.Unix(sec, 0), nil
++	}
++
+ 	for _, layout := range dateLayouts {
+ 		t, err := time.ParseInLocation(layout, s, time.Local)
+ 		if err == nil {
+

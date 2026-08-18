@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-002"
+keywords = ["go", "issue-resolving", "pelletier/go-toml"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.6
+category = "software-development"
+language = "go"
+repo = "pelletier/go-toml"
+instance_id = "pelletier__go-toml-1056"
+base_commit = "f36a3ece9e3adf0efaf9f9bd3591c3001f17602b"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:pelletier-go-toml-1056
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

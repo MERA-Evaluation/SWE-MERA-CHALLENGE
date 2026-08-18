@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-007"
+keywords = ["go", "issue-resolving", "charmbracelet/bubbletea"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.695
+category = "software-development"
+language = "go"
+repo = "charmbracelet/bubbletea"
+instance_id = "charmbracelet__bubbletea-958"
+base_commit = "c30088fd4e8f3983ecf556983893716ac452035f"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:charmbracelet-bubbletea-958
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

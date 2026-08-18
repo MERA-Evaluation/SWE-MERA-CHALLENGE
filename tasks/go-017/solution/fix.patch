@@ -1,0 +1,58 @@
+diff --git a/internal/llminternal/functions.go b/internal/llminternal/functions.go
+index 4eaaedc..b1771bd 100644
+--- a/internal/llminternal/functions.go
++++ b/internal/llminternal/functions.go
+@@ -63,6 +63,7 @@ func generateRequestConfirmationEvent(
+ 		}
+ 
+ 		requestConfirmationFC := &genai.FunctionCall{
++			ID:   utils.GenerateFunctionCallID(),
+ 			Name: toolconfirmation.FunctionCallName,
+ 			Args: args,
+ 		}
+@@ -77,18 +78,15 @@ func generateRequestConfirmationEvent(
+ 		return nil
+ 	}
+ 
+-	content := &genai.Content{
+-		Parts: parts,
+-		Role:  genai.RoleModel,
+-	}
+-	utils.PopulateClientFunctionCallID(content)
+-
+ 	return &session.Event{
+ 		InvocationID: invocationContext.InvocationID(),
+ 		Author:       invocationContext.Agent().Name(),
+ 		Branch:       invocationContext.Branch(),
+ 		LLMResponse: model.LLMResponse{
+-			Content: content,
++			Content: &genai.Content{
++				Parts: parts,
++				Role:  genai.RoleModel,
++			},
+ 		},
+ 		Timestamp:          time.Now(),
+ 		LongRunningToolIDs: longRunningToolIDs,
+diff --git a/internal/utils/utils.go b/internal/utils/utils.go
+index c754665..c8820de 100644
+--- a/internal/utils/utils.go
++++ b/internal/utils/utils.go
+@@ -36,11 +36,16 @@ const afFunctionCallIDPrefix = "adk-"
+ func PopulateClientFunctionCallID(c *genai.Content) {
+ 	for _, fn := range FunctionCalls(c) {
+ 		if fn.ID == "" {
+-			fn.ID = afFunctionCallIDPrefix + uuid.NewString()
++			fn.ID = GenerateFunctionCallID()
+ 		}
+ 	}
+ }
+ 
++// GenerateFunctionCallID generates a new function call ID.
++func GenerateFunctionCallID() string {
++	return afFunctionCallIDPrefix + uuid.NewString()
++}
++
+ // RemoveClientFunctionCallID removes the function call ID field that was set
+ // by populateClientFunctionCallID. This is necessary when FunctionCall or
+ // FunctionResponse are sent back to the model.
+

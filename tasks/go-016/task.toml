@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-016"
+keywords = ["go", "issue-resolving", "goplus/gogen"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.5525
+category = "software-development"
+language = "go"
+repo = "goplus/gogen"
+instance_id = "goplus__gogen-558"
+base_commit = "852bcb77b2525933ab7b69b1a4c9f4bc4f42f883"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:goplus-gogen-558
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

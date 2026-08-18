@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-015"
+keywords = ["go", "issue-resolving", "deepnoodle-ai/risor"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.435
+category = "software-development"
+language = "go"
+repo = "deepnoodle-ai/risor"
+instance_id = "deepnoodle-ai__risor-462"
+base_commit = "4362227f5eb7c6b20dd10046e256b1cb0e5a398a"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:deepnoodle-ai-risor-462
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

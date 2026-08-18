@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-006"
+keywords = ["go", "issue-resolving", "gin-gonic/gin"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.6475
+category = "software-development"
+language = "go"
+repo = "gin-gonic/gin"
+instance_id = "gin-gonic__gin-4380"
+base_commit = "9968c4bf9d5a99edc3eee2c068a4c9160ece8915"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:gin-gonic-gin-4380
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

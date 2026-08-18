@@ -1,8 +1,8 @@
 [dataset]
 name = "swemera/swe-mera-challenge"
-description = "SWE Mera Challenge: 31 issue-resolving tasks (PHP/Python), strict Harbor format, public Docker Hub images."
+description = "SWE Mera Challenge: 49 issue-resolving tasks (PHP/Python/GoLang), strict Harbor format, public Docker Hub images."
 authors = []
-keywords = [ "swe-mera", "issue-resolving", "php", "python",]
+keywords = [ "swe-mera", "issue-resolving", "php", "python", "go",]
 
 [[tasks]]
 name = "swemera/php-001"
@@ -127,3 +127,75 @@ digest = "sha256:2caa8d96a611543e1a67806311f11c1bc2dc6234c23fba3e0216b474e15bc20
 [[tasks]]
 name = "swemera/py-020"
 digest = "sha256:af344cbc9224376ba41f5ee0e5fb08991e19c61763268dbbba75792eb096eee8"
+
+[[tasks]]
+name = "swemera/go-001"
+digest = "sha256:a95cae20ac52a3e70373fc3e544841a5b49ca342dbabe6e6e410c38810e5bb6f"
+
+[[tasks]]
+name = "swemera/go-002"
+digest = "sha256:2f1fafbba058c7df3afcfa801c6e22793d3449ed3c3f5a87a938a83ea2801c62"
+
+[[tasks]]
+name = "swemera/go-003"
+digest = "sha256:915cc0479e80b846f64bb8c9cb220b059093b63072b55d9615a1ea8db50f46dd"
+
+[[tasks]]
+name = "swemera/go-004"
+digest = "sha256:391cc7ce503ef71e9ffa138bf527383964ea0fa428bb35919450890500aeba8c"
+
+[[tasks]]
+name = "swemera/go-005"
+digest = "sha256:eecd06e58c9710cb56049554e30d7e63fe9b1d8f75c2261c8eb30adcf3583b2f"
+
+[[tasks]]
+name = "swemera/go-006"
+digest = "sha256:5463ce695eefb3c2a0cb4faf0ead350ff657420c0697db6b953e54b9443060a2"
+
+[[tasks]]
+name = "swemera/go-007"
+digest = "sha256:f84a26c656c52db15148de240008aa28839451cd519366c12d19a2799dd72652"
+
+[[tasks]]
+name = "swemera/go-008"
+digest = "sha256:c54d80ed77b8e52dbaf498590932068418b0914edbe42083a98cc269f10fdba3"
+
+[[tasks]]
+name = "swemera/go-009"
+digest = "sha256:c476244c64c79ac75eb590d619d2c80230f6b5fd52671e1b9b162171f3e3b04f"
+
+[[tasks]]
+name = "swemera/go-010"
+digest = "sha256:3f6317a5bed7ea19412fbe13506d30f0ccf7e84de25069572ac3684c05cba211"
+
+[[tasks]]
+name = "swemera/go-011"
+digest = "sha256:514c4c67ad96f6177eb000cdaf417f3396020af53e1caa75df890c0c3a8e02da"
+
+[[tasks]]
+name = "swemera/go-012"
+digest = "sha256:78374088d78e5e3e2fa78fc6faacba88d94c0ebd7c61c9758e7a4b154810c569"
+
+[[tasks]]
+name = "swemera/go-014"
+digest = "sha256:59c59d2cf9859bbf176e0ac8f290a7f5eb7b963ce3c44f934aa14ddf8bc448ff"
+
+[[tasks]]
+name = "swemera/go-015"
+digest = "sha256:b60d8113bf6b36a9c0f66030ab41d5bdc32f4717f5354faae3fbb02ee00fa631"
+
+[[tasks]]
+name = "swemera/go-016"
+digest = "sha256:75f8b9c7f04b2ef4569cf79b0540bc24106f2054f9bd1a56c68a5b1075caa75f"
+
+[[tasks]]
+name = "swemera/go-017"
+digest = "sha256:0703bbe8a0778fd7cfd34afb5d51e394559b3ee8f20799eeda9d7a6e20e163fa"
+
+[[tasks]]
+name = "swemera/go-018"
+digest = "sha256:c55f8e413b36b5f2aa61e78606a74fd3fbf930a0172755b3615f7c38d72361bb"
+
+[[tasks]]
+name = "swemera/go-020"
+digest = "sha256:395911d029bafced91864b02057968f051c8c6be3eebf9dad9e49529a224ba18"

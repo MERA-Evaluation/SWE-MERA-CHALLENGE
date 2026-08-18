@@ -1,0 +1,16 @@
+diff --git a/yaml.go b/yaml.go
+index 2aac031..a23c6a2 100644
+--- a/yaml.go
++++ b/yaml.go
+@@ -585,6 +585,10 @@ func Unmarshal(in []byte, out any) (err error) {
+ 				Err: errors.New("yaml: no documents in stream"),
+ 			}}}
+ 		}
++		// Unwrap DocumentNode to get the actual content
++		if node.Kind == libyaml.DocumentNode && len(node.Content) == 1 {
++			node = node.Content[0]
++		}
+ 		return u.UnmarshalYAML(node)
+ 	}
+ 	// Normal path
+

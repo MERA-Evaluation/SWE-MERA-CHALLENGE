@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-017"
+keywords = ["go", "issue-resolving", "google/adk-go"]
+
+[metadata]
+difficulty = "hard"
+difficulty_score = 0.7675
+category = "software-development"
+language = "go"
+repo = "google/adk-go"
+instance_id = "google__adk-go-553"
+base_commit = "ab29975f9400686396e05f8a017efc2804ecc02a"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:google-adk-go-553
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

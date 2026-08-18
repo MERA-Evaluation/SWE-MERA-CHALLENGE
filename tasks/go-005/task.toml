@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-005"
+keywords = ["go", "issue-resolving", "go-gorm/gorm"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.4925
+category = "software-development"
+language = "go"
+repo = "go-gorm/gorm"
+instance_id = "go-gorm__gorm-7717"
+base_commit = "01916e711737392edf158b1df4ceb48c8d24ddfd"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:go-gorm-gorm-7717
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

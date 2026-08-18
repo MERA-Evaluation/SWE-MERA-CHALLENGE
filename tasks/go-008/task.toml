@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-008"
+keywords = ["go", "issue-resolving", "derailed/k9s"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.5925
+category = "software-development"
+language = "go"
+repo = "derailed/k9s"
+instance_id = "derailed__k9s-3755"
+base_commit = "2c60b571b0ab9c37815caeeecacb9b127caf32c9"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:derailed-k9s-3755
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

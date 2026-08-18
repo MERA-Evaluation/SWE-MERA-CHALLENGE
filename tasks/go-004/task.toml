@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-004"
+keywords = ["go", "issue-resolving", "goccy/go-yaml"]
+
+[metadata]
+difficulty = "hard"
+difficulty_score = 0.735
+category = "software-development"
+language = "go"
+repo = "goccy/go-yaml"
+instance_id = "goccy__go-yaml-862"
+base_commit = "d4021ff736c7fea2f9b40de179e80205ce52051c"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:goccy-go-yaml-862
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

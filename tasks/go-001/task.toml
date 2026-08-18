@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-001"
+keywords = ["go", "issue-resolving", "spf13/cast"]
+
+[metadata]
+difficulty = "medium"
+difficulty_score = 0.6775
+category = "software-development"
+language = "go"
+repo = "spf13/cast"
+instance_id = "spf13__cast-273"
+base_commit = "a79ffed9a6a3da62453e90f35784fc2b8d1b390b"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:spf13-cast-273
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

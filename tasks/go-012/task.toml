@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-012"
+keywords = ["go", "issue-resolving", "thanos-io/promql-engine"]
+
+[metadata]
+difficulty = "hard"
+difficulty_score = 0.7925
+category = "software-development"
+language = "go"
+repo = "thanos-io/promql-engine"
+instance_id = "thanos-io__promql-engine-604"
+base_commit = "c8ce33a139354777ea043bc370c4bcc814378265"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:thanos-io-promql-engine-604
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0

@@ -1,0 +1,30 @@
+schema_version = "1.0"
+
+[task]
+name = "swemera/go-011"
+keywords = ["go", "issue-resolving", "parquet-go/parquet-go"]
+
+[metadata]
+difficulty = "hard"
+difficulty_score = 0.9
+category = "software-development"
+language = "go"
+repo = "parquet-go/parquet-go"
+instance_id = "parquet-go__parquet-go-519"
+base_commit = "b1bbe023c3e577e365252c284f5e2f47918a9edc"
+
+[verifier]
+network_mode = "public"
+timeout_sec = 3600
+
+[agent]
+network_mode = "public"
+timeout_sec = 3600
+
+[environment]
+# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:parquet-go-parquet-go-519
+build_timeout_sec = 3600
+cpus = 4
+memory_mb = 8192
+storage_mb = 16384
+gpus = 0
