@@ -17,8 +17,8 @@ kind = "contest"
 # base image (см. environment/Dockerfile): rewive/swe-mera-challenge:dedoc-scramble-918
 build_timeout_sec = 3600
 network_mode = "public"
-cpus = 4
-memory_mb = 8192
+cpus = 16
+memory_mb = 51200
 storage_mb = 16384
 gpus = 0
 

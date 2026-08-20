@@ -1,0 +1,77 @@
+default_profile = "openai_compatible"
+
+[profiles.openrouter]
+provider = "openrouter"
+model = ""
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+temperature = 0.0
+max_tokens = 8192
+max_steps = 60
+timeout_sec = 1800
+
+[profiles.openai_compatible]
+provider = "openai"
+model = ""
+base_url = "http://127.0.0.1:8000/v1"
+api_key_env = "LOCAL_API_KEY"
+temperature = 0.0
+max_tokens = 8192
+max_steps = 60
+timeout_sec = 1800
+tool_calling = "native"
+
+[profiles.openai]
+provider = "openai"
+model = ""
+base_url = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+temperature = 0.0
+max_tokens = 8192
+max_steps = 60
+timeout_sec = 1800
+
+[profiles.azure]
+provider = "azure"
+model = ""
+base_url = "https://my-resource.openai.azure.com/openai/deployments/my-deployment"
+api_version = "2024-10-21"
+api_key_env = "AZURE_OPENAI_API_KEY"
+temperature = 0.0
+max_tokens = 8192
+max_steps = 60
+
+[profiles.vllm]
+provider = "openai"
+model = ""
+base_url = "http://gpu-node:8000/v1"
+api_key_env = "VLLM_API_KEY"
+temperature = 0.0
+max_tokens = 16384
+max_steps = 80
+tool_calling = "native"
+
+[profiles.ollama]
+provider = "openai"
+model = ""
+base_url = "http://127.0.0.1:11434/v1"
+api_key_env = "OLLAMA_API_KEY"
+temperature = 0.0
+max_tokens = 8192
+max_steps = 60
+tool_calling = "prompt"
+
+[profiles.anthropic]
+provider = "anthropic"
+model = ""
+base_url = "https://api.anthropic.com"
+api_key_env = "ANTHROPIC_API_KEY"
+temperature = 0.0
+max_tokens = 8192
+max_steps = 60
+
+[limits]
+n_concurrent = 4
+n_attempts = 1
+agent_timeout_sec = 3600
+verifier_timeout_sec = 3600

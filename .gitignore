@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 jobs/
 *.log
+.env
+configs/models.toml
+/sample_submission.zip
+/sample_trajectory.zip
+/metrics.json

@@ -24,7 +24,7 @@ timeout_sec = 3600
 [environment]
 # base image (см. environment/Dockerfile): rewive/swe-mera-challenge:deepnoodle-ai-risor-462
 build_timeout_sec = 3600
-cpus = 4
-memory_mb = 8192
+cpus = 16
+memory_mb = 51200
 storage_mb = 16384
 gpus = 0

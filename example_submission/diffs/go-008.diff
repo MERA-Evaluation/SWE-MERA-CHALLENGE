@@ -1,0 +1,7 @@
+diff --git a/STUB_go-008.txt b/STUB_go-008.txt
+new file mode 100644
+index 0000000..0000001
+--- /dev/null
++++ b/STUB_go-008.txt
+@@ -0,0 +1 @@
++placeholder patch for task go-008: replace with a real fix

@@ -1,0 +1,7 @@
+diff --git a/STUB_php-019.txt b/STUB_php-019.txt
+new file mode 100644
+index 0000000..0000001
+--- /dev/null
++++ b/STUB_php-019.txt
+@@ -0,0 +1 @@
++placeholder patch for task php-019: replace with a real fix
