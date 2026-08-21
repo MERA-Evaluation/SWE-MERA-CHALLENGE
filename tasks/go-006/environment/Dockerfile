@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:gin-gonic-gin-4380
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:gin-gonic-gin-4380
 
 WORKDIR /testbed
 

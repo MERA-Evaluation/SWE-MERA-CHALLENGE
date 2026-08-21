@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:llmsresearch-paperbanana-73
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:llmsresearch-paperbanana-73
 
 WORKDIR /testbed
 

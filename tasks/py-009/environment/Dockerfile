@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:pallets-click-3208
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:pallets-click-3208
 
 WORKDIR /testbed
 

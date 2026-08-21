@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:koel-koel-2440
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:koel-koel-2440
 
 WORKDIR /testbed
 

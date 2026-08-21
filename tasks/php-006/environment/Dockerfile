@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:opensearch-project-opensearch-php-403
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:opensearch-project-opensearch-php-403
 
 WORKDIR /testbed
 

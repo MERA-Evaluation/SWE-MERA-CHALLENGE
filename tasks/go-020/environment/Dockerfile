@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:open-telemetry-opentelemetry-go-compile-instrumentation-491
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:open-telemetry-opentelemetry-go-compile-instrumentation-491
 
 WORKDIR /testbed
 

@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:derailed-k9s-3755
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:derailed-k9s-3755
 
 WORKDIR /testbed
 

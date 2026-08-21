@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:php-cs-fixer-php-cs-fixer-8752
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:php-cs-fixer-php-cs-fixer-8752
 
 WORKDIR /testbed
 

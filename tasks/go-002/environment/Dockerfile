@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:pelletier-go-toml-1056
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:pelletier-go-toml-1056
 
 WORKDIR /testbed
 

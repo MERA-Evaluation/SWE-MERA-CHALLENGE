@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:spf13-cast-273
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:spf13-cast-273
 
 WORKDIR /testbed
 

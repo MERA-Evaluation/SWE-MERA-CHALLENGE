@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:cuqi-dtu-cuqipy-707
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:cuqi-dtu-cuqipy-707
 
 WORKDIR /testbed
 

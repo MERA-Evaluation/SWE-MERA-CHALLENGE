@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:openai-php-client-606
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:openai-php-client-606
 
 WORKDIR /testbed
 

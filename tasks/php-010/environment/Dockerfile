@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:myintervals-php-css-parser-1406
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:myintervals-php-css-parser-1406
 
 WORKDIR /testbed
 

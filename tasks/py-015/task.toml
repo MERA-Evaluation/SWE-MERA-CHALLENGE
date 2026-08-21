@@ -13,11 +13,10 @@ language = "python"
 kind = "demo"
 
 [environment]
-# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:lincc-frameworks-nested-pandas-303
 build_timeout_sec = 3600
 network_mode = "public"
-cpus = 16
-memory_mb = 51200
+cpus = 2
+memory_mb = 4096
 storage_mb = 16384
 gpus = 0
 

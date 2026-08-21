@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:charmbracelet-bubbletea-958
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:charmbracelet-bubbletea-958
 
 WORKDIR /testbed
 

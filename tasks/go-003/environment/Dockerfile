@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:yaml-go-yaml-276
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:yaml-go-yaml-276
 
 WORKDIR /testbed
 

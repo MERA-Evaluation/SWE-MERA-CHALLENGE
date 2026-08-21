@@ -7,7 +7,7 @@
 <p>
   <img alt="tasks" src="https://img.shields.io/badge/tasks-49-1f6feb?style=flat-square&labelColor=0d1117">
   <img alt="languages" src="https://img.shields.io/badge/Go%2018%20·%20Python%2016%20·%20PHP%2015-24292f?style=flat-square&labelColor=0d1117">
-  <img alt="runner" src="https://img.shields.io/badge/runner-Harbor-6e40c9?style=flat-square&labelColor=0d1117">
+  <img alt="runner" src="https://img.shields.io/badge/runner-Harbor%200.17.1-6e40c9?style=flat-square&labelColor=0d1117">
   <img alt="metric" src="https://img.shields.io/badge/metric-pass%401-1a7f37?style=flat-square&labelColor=0d1117">
 </p>
 
@@ -39,13 +39,15 @@ The leaderboard metric is **pass@1**: each task is given exactly one attempt, an
 
 The second condition carries real weight. Some tasks list tens of thousands of `pass_to_pass` tests — `php-001` alone lists 46,118 — so a patch that turns the target tests green by breaking behaviour elsewhere scores zero on that task.
 
-The benchmark is packaged in the [Harbor](https://github.com/laude-institute/harbor) task format. Environment images are published on Docker Hub and pinned by digest in `dataset.toml`, so nothing has to be built locally.
+The benchmark is packaged in the [Harbor](https://github.com/laude-institute/harbor) task format. Environment images are published on Docker Hub and pinned by digest in `dataset.toml`, so nothing has to be built from source.
 
 | | |
 | :-- | :-- |
 | Tasks | 49 — 18 Go, 16 Python, 15 PHP |
 | Difficulty | 10 easy, 23 medium, 16 hard |
-| Per-task limits | 16 CPU, 50 GB RAM, 16 GB disk, 3600 s agent, 3600 s verifier |
+| Per-task limits | 2 CPU, 4 GB RAM, 16 GB disk, 3600 s agent, 3600 s verifier |
+| Image platform | `linux/amd64` |
+| Runner | Harbor 0.17.1, pinned in `requirements.txt` |
 | Metric | pass@1 over all 49 tasks |
 | Deliverable | `sample_submission.zip`, optionally `sample_trajectory.zip` |
 
@@ -58,12 +60,12 @@ Repository layout:
 ```text
 SWE-MERA-CHALLENGE/
 ├── dataset.toml              task list with pinned image digests
+├── requirements.txt          fully pinned Harbor runner environment
 ├── tasks/<task-id>/          49 task definitions
 ├── scripts/
 │   ├── score.py              local scoring
 │   └── collect.py            builds the submission and trajectory archives
 ├── configs/
-│   ├── models.example.toml   model profiles for hosted APIs and self-hosted endpoints
 │   └── .env.example          API key template
 └── example_submission/       a reference submission: submission.csv and diffs/
 ```
@@ -107,58 +109,69 @@ Properties worth knowing before the first run:
 
 | Component | Version | Why |
 | :-- | :-- | :-- |
-| Python | `>= 3.11` | Harbor CLI and the repository scripts |
+| Python | `3.12` or newer | Harbor requires it; check with `python3 --version` |
 | Docker | `>= 24`, daemon running | every task executes in a container |
 | Git | `>= 2.30` | cloning and diff handling |
 | Disk | `>= 60 GB` free | task images are large, the PHP ones especially |
-| CPU | `>= 2` cores per concurrent task | the container limit is 16 |
-| RAM | `>= 4 GB` per concurrent task | the container limit is 50 GB |
+| CPU | `>= 2` cores per concurrent task | the container limit is 2 |
+| RAM | `>= 4 GB` per concurrent task | the container limit is 4 GB |
+| Architecture | `x86_64` host, or Docker with `linux/amd64` emulation | the images are amd64-only |
 
 ### Setup
+
+Install the runner from `requirements.txt`. It pins Harbor and every transitive dependency, so the environment is reproducible; installing `harbor` alone resolves different dependency versions and breaks in various ways.
 
 ```bash
 git clone https://github.com/MERA-Evaluation/SWE-MERA-CHALLENGE.git
 cd SWE-MERA-CHALLENGE
 
+python3 --version
 python3 -m venv .venv && source .venv/bin/activate
 pip install --upgrade pip
-pip install harbor-cli
+pip install -r requirements.txt
 
 harbor --version
+```
+
+`harbor --version` must print `0.17.1`.
+
+### Check Docker
+
+The daemon must be running and able to execute `linux/amd64` images before the first task is launched:
+
+```bash
 docker info
+docker run --rm --platform=linux/amd64 hello-world
 ```
 
 ### Model configuration
 
+Harbor resolves models through LiteLLM, so a model is selected by the agent flag and the model name, and credentials come from the environment:
+
 ```bash
 cp configs/.env.example .env
-cp configs/models.example.toml configs/models.toml
-$EDITOR .env configs/models.toml
-set -a && source .env && set +a
+vim .env
 ```
 
-`configs/models.example.toml` ships two families of profiles:
+Fill in the key of the provider you intend to use, and `OPENAI_BASE_URL` only for a self-hosted endpoint; leave the rest empty.
 
-- **Hosted APIs** — `openrouter`, `openai`, `anthropic`, `azure`.
-- **Self-hosted endpoints** — `openai_compatible`, `vllm`, `ollama`. Any server that speaks the OpenAI-compatible protocol works: vLLM, SGLang, TGI, LM Studio, llama.cpp server and others. OpenRouter is not required.
+| Variable | Used for |
+| :-- | :-- |
+| `OPENAI_API_KEY` | OpenAI models and any OpenAI-compatible endpoint |
+| `ANTHROPIC_API_KEY` | Anthropic models |
+| `OPENROUTER_API_KEY` | OpenRouter models |
+| `GEMINI_API_KEY` | Gemini models |
+| `OPENAI_BASE_URL` | base URL of a self-hosted endpoint |
 
-To point the run at your own deployment, set the base URL, the model name and the environment variable that holds the key:
+Self-hosted deployments are first-class: any server speaking the OpenAI-compatible protocol works — vLLM, SGLang, TGI, LM Studio, llama.cpp server and others. Point `OPENAI_BASE_URL` at it, set `OPENAI_API_KEY` to whatever the server expects, and pass the model as `openai/<model-name>`.
 
-```toml
-[profiles.vllm]
-provider = "openai"
-model = "Qwen/Qwen3-32B"
-base_url = "http://gpu-node:8000/v1"
-api_key_env = "VLLM_API_KEY"
-temperature = 0.0
-max_tokens = 16384
-max_steps = 80
-```
-
-Keys live only in `.env`, which is git-ignored together with `configs/models.toml` and the generated archives.
+The file is loaded with `--env-file .env`; `.env` is git-ignored.
 
 > [!TIP]
 > Images are pulled once and cached by Docker. The first run is slow, later runs are noticeably faster. On rented hardware, warm the cache on a few tasks before launching the full sweep.
+
+> [!NOTE]
+> Verification time varies a lot between tasks. A Go task finishes in under a minute, while a large PHP task runs tens of thousands of `pass_to_pass` tests and needs tens of minutes on 2 cores. On an arm64 host the amd64 images run under emulation and everything becomes several times slower, which can push the biggest PHP tasks into the 3600 s verifier timeout; run the scoring sweep on a native `x86_64` machine.
 
 ---
 
@@ -166,50 +179,60 @@ Keys live only in `.env`, which is git-ignored together with `configs/models.tom
 
 ### Validate the harness first
 
-The oracle agent applies the upstream patch, so the task must resolve. If it does not, the problem is in the environment rather than in the model.
+The oracle agent applies the upstream patch, so the task must resolve and the reward must be `1`. If it does not, the problem is in the environment rather than in the model.
 
 ```bash
-harbor run \
-  --tasks-dir tasks \
-  --task-ids go-001 \
-  --agent oracle \
-  --jobs-dir jobs/smoke
+harbor run -p tasks -i go-001 -a oracle -o jobs/smoke -n 1 -y
 ```
+
+| Flag | Meaning |
+| :-- | :-- |
+| `-p, --path` | path to the task directory, here `tasks` |
+| `-i, --include-task-name` | task name or glob; repeat the flag for several tasks |
+| `-a, --agent` | agent to run, `oracle` for the reference patch |
+| `-m, --model` | model name passed to the agent |
+| `-o, --jobs-dir` | where job results are written |
+| `-n, --n-concurrent` | number of concurrent trials |
+| `-y` | auto-confirm prompts |
 
 ### Run your own model
 
-The metric is pass@1, so a scoring run gives every task a single attempt:
+The metric is pass@1, so a scoring run gives every task a single attempt, which is the Harbor default (`-k 1`):
 
 ```bash
 harbor run \
-  --tasks-dir tasks \
-  --agent-config configs/models.toml \
-  --agent-profile openai_compatible \
-  --n-concurrent 2 \
-  --jobs-dir jobs/run-001
+  -p tasks \
+  -a mini-swe-agent \
+  -m openrouter/qwen/qwen3.7-flash \
+  --env-file .env \
+  -o jobs/run-001 \
+  -n 2 \
+  -y
 ```
 
-Choose `--n-concurrent` according to the available hardware: one task may take 2 cores and 4 GB of RAM, so two in parallel already imply 4 cores and 8 GB.
+Any Harbor agent works: `terminus-2`, `mini-swe-agent`, `swe-agent`, `openhands`, `claude-code`, `codex` and others; run `harbor run --help` for the full list, or pass an import path to your own implementation.
+
+Choose `-n` according to the available hardware: one task takes 2 cores and 4 GB of RAM, so four in parallel already imply 8 cores and 16 GB.
 
 ### Subsets
 
 While tuning the agent, run a small mixed-language subset — it gives a signal in minutes instead of hours.
 
 ```bash
-harbor run --tasks-dir tasks --task-ids go-012,php-001,py-005 --jobs-dir jobs/run-002
+harbor run -p tasks -i go-012 -i php-001 -i py-005 -a oracle -o jobs/run-002 -y
 ```
 
 ### What the run produces
 
-Harbor writes one job directory and, inside it, one trial directory per attempt, named `<task-id>__<suffix>`:
+Harbor writes one job directory per run, and inside it one trial directory per attempt, named `<task-id>__<suffix>`:
 
 ```text
-jobs/run-001/
+jobs/run-001/2026-08-21__14-44-53/
 ├── config.json                            the task list the job was launched with
 ├── lock.json                              harbor version, concurrency, resolved trials
 ├── result.json                            job-level stats and per-eval reward summary
 ├── job.log
-└── go-001__mepGVhf/
+└── go-001__cEAJUzd/
     ├── config.json                        task path, trial name, job id
     ├── lock.json                          task digest, agent, environment
     ├── result.json                        task_name, agent_info, verifier_result.rewards.reward, timings
@@ -230,7 +253,7 @@ jobs/run-001/
 ```
 
 > [!IMPORTANT]
-> Harbor does not extract the patch by itself. Make the agent write its final diff to `/logs/artifacts/model_patch.diff` inside the container — Harbor copies that directory to `<trial>/artifacts/logs/artifacts/`, and `collect.py` picks the file up from there.
+> Harbor does not extract the patch by itself. Make the agent write its final diff to `/logs/artifacts/model_patch.diff` inside the container — Harbor copies that directory to `<trial>/artifacts/logs/artifacts/`, and `collect.py` picks the file up from there. The oracle agent does not write it, so `collect.py` reports `no patches found` on a smoke run; that is expected.
 >
 > ```bash
 > git -C /testbed add -A
@@ -245,16 +268,20 @@ Keep the job directory until the results are submitted: both archives are assemb
 
 ### Build the archives
 
-```bash
-python3 scripts/collect.py --jobs-dir jobs/run-001
-```
-
-The script walks the job directory, maps every trial to a task id through `result.json` (`task_name`) or the trial name, takes the first attempt of each task and writes two archives into the current directory. To build only one of them:
+Point the scripts at the timestamped job directory, the one that contains the trials:
 
 ```bash
-python3 scripts/collect.py --jobs-dir jobs/run-001 --only submission
-python3 scripts/collect.py --jobs-dir jobs/run-001 --only trajectory
+python3 scripts/collect.py --jobs-dir jobs/run-001/2026-08-21__14-44-53
 ```
+
+The script maps every trial to a task id through `result.json` (`task_name`) or the trial name, takes the first attempt of each task and writes two archives into the current directory. To build only one of them:
+
+```bash
+python3 scripts/collect.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --only submission
+python3 scripts/collect.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --only trajectory
+```
+
+Both scripts use the Python standard library only, so any Python 3.11 or newer runs them.
 
 ### `sample_submission.zip` — what gets scored
 
@@ -289,15 +316,15 @@ py-001,diffs/py-001.diff
 This archive is the Harbor job directory as it stands on disk, nothing reshaped and nothing invented:
 
 ```text
-run-001/config.json
-run-001/lock.json
-run-001/result.json
-run-001/job.log
-run-001/go-001__mepGVhf/result.json
-run-001/go-001__mepGVhf/agent/trajectory.json
-run-001/go-001__mepGVhf/artifacts/logs/artifacts/model_patch.diff
-run-001/go-001__mepGVhf/verifier/report.json
-run-001/go-001__mepGVhf/verifier/parse_result.json
+2026-08-21__14-44-53/config.json
+2026-08-21__14-44-53/lock.json
+2026-08-21__14-44-53/result.json
+2026-08-21__14-44-53/job.log
+2026-08-21__14-44-53/go-001__cEAJUzd/result.json
+2026-08-21__14-44-53/go-001__cEAJUzd/agent/
+2026-08-21__14-44-53/go-001__cEAJUzd/artifacts/logs/artifacts/model_patch.diff
+2026-08-21__14-44-53/go-001__cEAJUzd/verifier/report.json
+2026-08-21__14-44-53/go-001__cEAJUzd/verifier/parse_result.json
 ...
 ```
 
@@ -343,8 +370,8 @@ Upload `sample_submission.zip`, and optionally `sample_trajectory.zip`, through 
 `scripts/score.py` reads `verifier/parse_result.json` from every trial in the job and compares the passed tests against `fail_to_pass` and `pass_to_pass` from `tasks/*/tests/config.json`, applying the same rule as the platform. When the parsed report is missing, it falls back to the Harbor reward in the trial `result.json`. It reports pass@1 over the single attempt of each task; if a task happens to have several trials in the job, only the first one counts.
 
 ```bash
-python3 scripts/score.py --jobs-dir jobs/run-001
-python3 scripts/score.py --jobs-dir jobs/run-001 --list-failed --json metrics.json
+python3 scripts/score.py --jobs-dir jobs/run-001/2026-08-21__14-44-53
+python3 scripts/score.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --list-failed --json metrics.json
 ```
 
 ```text
@@ -393,11 +420,14 @@ In addition:
 
 | Symptom | Cause and fix |
 | :-- | :-- |
-| the oracle run does not resolve a task | environment or Docker issue: check that the daemon is running and that disk space is sufficient |
-| `collect.py` reports `no patches found` | wrong `--jobs-dir`, or the agent never wrote its diff to `/logs/artifacts/` |
+| `harbor --version` prints something other than `0.17.1` | the environment was not installed from `requirements.txt`; recreate the virtualenv |
+| `no match for platform in manifest` | the Docker host cannot run `linux/amd64`; enable emulation or use an x86_64 machine |
+| `range of CPUs is from 0.01 to N` | Docker has fewer cores available than the task requests; give Docker at least 2 cores per concurrent task |
+| the oracle run does not end with reward `1` | environment or Docker issue: check that the daemon is running and that disk space is sufficient |
+| `collect.py` reports `no patches found` | expected for the oracle agent; for your own agent it means the diff was never written to `/logs/artifacts/` |
 | a diff comes out empty | the edits were made outside `/testbed`, or new files were never staged in git |
-| `score.py` sees no trials | `--jobs-dir` points above or below the job directory; it must contain the `<task-id>__<suffix>` trials |
+| `score.py` sees no trials | `--jobs-dir` must point at the timestamped job directory that contains the `<task-id>__<suffix>` trials |
 | `pass@1` is far below expectation | `pass_to_pass` regressions; inspect the verifier logs under `jobs/` |
-| tasks fail with timeouts | lower `--n-concurrent`, the machine lacks CPU or memory |
+| tasks fail with timeouts | lower `-n`, the machine lacks CPU or memory |
 | large gap between `evaluated` and 49 | some tasks never reached the verifier; rerun them separately |
 | `submission.csv` has fewer than 50 lines | tasks are missing from the archive and will be scored as unresolved |

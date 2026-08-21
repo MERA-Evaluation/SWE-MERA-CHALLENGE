@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:harrisonkramer-optiland-449
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:harrisonkramer-optiland-449
 
 WORKDIR /testbed
 

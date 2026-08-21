@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:librebooking-librebooking-1323
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:librebooking-librebooking-1323
 
 WORKDIR /testbed
 

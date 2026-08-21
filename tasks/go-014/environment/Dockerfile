@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:wesm-msgvault-243
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:wesm-msgvault-243
 
 WORKDIR /testbed
 

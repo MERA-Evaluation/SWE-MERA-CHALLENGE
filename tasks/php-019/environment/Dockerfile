@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:phpoffice-phpspreadsheet-4655
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:phpoffice-phpspreadsheet-4655
 
 WORKDIR /testbed
 

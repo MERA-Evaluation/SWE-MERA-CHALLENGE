@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:google-adk-go-553
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:google-adk-go-553
 
 WORKDIR /testbed
 

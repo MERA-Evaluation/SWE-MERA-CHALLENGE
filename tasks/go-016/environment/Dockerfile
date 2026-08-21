@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:goplus-gogen-558
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:goplus-gogen-558
 
 WORKDIR /testbed
 

@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:lincc-frameworks-nested-pandas-303
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:lincc-frameworks-nested-pandas-303
 
 WORKDIR /testbed
 

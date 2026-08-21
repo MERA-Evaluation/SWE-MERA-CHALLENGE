@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:parquet-go-parquet-go-519
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:parquet-go-parquet-go-519
 
 WORKDIR /testbed
 

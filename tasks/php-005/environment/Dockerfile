@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:jsonrainbow-json-schema-845
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:jsonrainbow-json-schema-845
 
 WORKDIR /testbed
 

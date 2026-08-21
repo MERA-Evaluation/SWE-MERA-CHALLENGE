@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:newton-physics-newton-1790
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:newton-physics-newton-1790
 
 WORKDIR /testbed
 

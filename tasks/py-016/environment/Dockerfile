@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:tapwithus-tap-python-sdk-32
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:tapwithus-tap-python-sdk-32
 
 WORKDIR /testbed
 

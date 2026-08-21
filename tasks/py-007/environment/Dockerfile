@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:sooperset-mcp-atlassian-901
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:sooperset-mcp-atlassian-901
 
 WORKDIR /testbed
 

@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:thanos-io-promql-engine-604
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:thanos-io-promql-engine-604
 
 WORKDIR /testbed
 

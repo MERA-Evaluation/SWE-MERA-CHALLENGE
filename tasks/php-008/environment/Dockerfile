@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:predis-predis-1633
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:predis-predis-1633
 
 WORKDIR /testbed
 

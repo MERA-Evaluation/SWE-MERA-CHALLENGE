@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:fib-international-structuralcodes-332
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:fib-international-structuralcodes-332
 
 WORKDIR /testbed
 

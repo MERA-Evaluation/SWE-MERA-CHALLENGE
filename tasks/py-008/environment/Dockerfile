@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:kozea-weasyprint-2618
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:kozea-weasyprint-2618
 
 WORKDIR /testbed
 

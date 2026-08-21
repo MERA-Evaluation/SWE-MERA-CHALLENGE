@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:dedoc-scramble-1034
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:dedoc-scramble-1034
 
 WORKDIR /testbed
 

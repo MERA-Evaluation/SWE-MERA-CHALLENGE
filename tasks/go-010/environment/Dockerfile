@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:hamba-avro-557
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:hamba-avro-557
 
 WORKDIR /testbed
 

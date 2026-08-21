@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:geopandas-geopandas-3591
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:geopandas-geopandas-3591
 
 WORKDIR /testbed
 

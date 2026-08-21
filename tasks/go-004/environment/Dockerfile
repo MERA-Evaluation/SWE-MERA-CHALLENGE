@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:goccy-go-yaml-862
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:goccy-go-yaml-862
 
 WORKDIR /testbed
 

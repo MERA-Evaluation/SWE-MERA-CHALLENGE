@@ -22,9 +22,8 @@ network_mode = "public"
 timeout_sec = 3600
 
 [environment]
-# base image (см. environment/Dockerfile): rewive/swe-mera-challenge:open-telemetry-opentelemetry-go-compile-instrumentation-491
 build_timeout_sec = 3600
-cpus = 16
-memory_mb = 51200
+cpus = 2
+memory_mb = 4096
 storage_mb = 16384
 gpus = 0

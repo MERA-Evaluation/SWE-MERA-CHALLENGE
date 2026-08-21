@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:go-gorm-gorm-7717
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:go-gorm-gorm-7717
 
 WORKDIR /testbed
 

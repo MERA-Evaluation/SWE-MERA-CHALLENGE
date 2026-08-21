@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:wichmann-lab-python-psignifit-244
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:wichmann-lab-python-psignifit-244
 
 WORKDIR /testbed
 

@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:osteele-liquid-137
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:osteele-liquid-137
 
 WORKDIR /testbed
 

@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:emilstenstrom-justhtml-46
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:emilstenstrom-justhtml-46
 
 WORKDIR /testbed
 

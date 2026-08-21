@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:grafana-sobek-101
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:grafana-sobek-101
 
 WORKDIR /testbed
 

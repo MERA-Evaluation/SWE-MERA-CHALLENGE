@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:wordpress-sqlite-database-integration-209
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:wordpress-sqlite-database-integration-209
 
 WORKDIR /testbed
 

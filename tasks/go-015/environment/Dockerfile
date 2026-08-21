@@ -1,4 +1,4 @@
-FROM rewive/swe-mera-challenge:deepnoodle-ai-risor-462
+FROM --platform=linux/amd64 rewive/swe-mera-challenge:deepnoodle-ai-risor-462
 
 WORKDIR /testbed
 
