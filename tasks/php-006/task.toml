@@ -27,3 +27,7 @@ timeout_sec = 3600
 [verifier]
 network_mode = "public"
 timeout_sec = 3600
+
+[[verifier.collect]]
+command = '''set -u; mkdir -p /logs/artifacts; cd /testbed || exit 0; git config --global --add safe.directory '*' >/dev/null 2>&1 || true; GIT_INDEX_FILE=/tmp/swemera_patch.index; export GIT_INDEX_FILE; rm -f "$GIT_INDEX_FILE"; git add -A -- . >/dev/null 2>&1; BASE=$(git rev-list --max-parents=0 HEAD 2>/dev/null | tail -1); [ -n "$BASE" ] || BASE=HEAD; git diff --cached --binary --no-color "$BASE" -- ':(exclude)junit.xml' ':(exclude)task_tests.json' ':(exclude)*.orig' ':(exclude)*.rej' > /logs/artifacts/model_patch.diff; rm -f "$GIT_INDEX_FILE"; wc -c < /logs/artifacts/model_patch.diff'''
+timeout_sec = 120.0

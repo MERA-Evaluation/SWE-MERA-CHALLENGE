@@ -63,8 +63,7 @@ SWE-MERA-CHALLENGE/
 ├── requirements.txt          fully pinned Harbor runner environment
 ├── tasks/<task-id>/          49 task definitions
 ├── scripts/
-│   ├── score.py              local scoring
-│   └── collect.py            builds the submission and trajectory archives
+│   └── swemera.py            scoring and packaging in one command
 ├── configs/
 │   └── .env.example          API key template
 └── example_submission/       a reference submission: submission.csv and diffs/
@@ -153,19 +152,53 @@ cp configs/.env.example .env
 vim .env
 ```
 
-Fill in the key of the provider you intend to use, and `OPENAI_BASE_URL` only for a self-hosted endpoint; leave the rest empty.
+**Fill in the key of one provider and delete the rest.** An empty variable is ignored, but a variable holding a wrong or expired key makes the run fail with `401` even when another provider is configured correctly. The `*_API_BASE` / `*_BASE_URL` lines carry the provider defaults: keep them as they are unless you route through a proxy, a regional endpoint or a local server.
 
-| Variable | Used for |
+Each block below is one complete, self-sufficient configuration.
+
+**OpenRouter** — `-m openrouter/qwen/qwen3.7-flash`
+
+```dotenv
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_API_BASE=https://openrouter.ai/api/v1
+```
+
+**OpenAI** — `-m openai/gpt-5.4`
+
+```dotenv
+OPENAI_API_KEY=sk-...
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+**Anthropic** — `-m anthropic/claude-sonnet-4.6`
+
+```dotenv
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_API_BASE=https://api.anthropic.com
+```
+
+**Gemini** — `-m gemini/gemini-3.1-pro`
+
+```dotenv
+GEMINI_API_KEY=...
+```
+
+**A local or self-hosted model** — vLLM, SGLang, TGI, llama.cpp, LM Studio, Ollama or any proxy that speaks the OpenAI protocol. Reuse the OpenAI variables and point them at your server:
+
+```dotenv
+OPENAI_API_KEY=dummy
+OPENAI_BASE_URL=http://host.docker.internal:8000/v1
+```
+
+| Rule | Detail |
 | :-- | :-- |
-| `OPENAI_API_KEY` | OpenAI models and any OpenAI-compatible endpoint |
-| `ANTHROPIC_API_KEY` | Anthropic models |
-| `OPENROUTER_API_KEY` | OpenRouter models |
-| `GEMINI_API_KEY` | Gemini models |
-| `OPENAI_BASE_URL` | base URL of a self-hosted endpoint |
+| URL shape | must end with `/v1`; do not append `/chat/completions`, the client adds the route |
+| From a container | `localhost` means the container itself — use `host.docker.internal` or the host IP |
+| The key | most local servers ignore it, but the client requires a non-empty value, hence `dummy` |
+| Model name | pass `-m openai/<name>` where `<name>` is what the server reports: `curl $OPENAI_BASE_URL/models` |
+| Endpoint | the agents use Chat Completions (`/v1/chat/completions`); a server exposing only `/v1/responses` will not work |
 
-Self-hosted deployments are first-class: any server speaking the OpenAI-compatible protocol works — vLLM, SGLang, TGI, LM Studio, llama.cpp server and others. Point `OPENAI_BASE_URL` at it, set `OPENAI_API_KEY` to whatever the server expects, and pass the model as `openai/<model-name>`.
-
-The file is loaded with `--env-file .env`; `.env` is git-ignored.
+The same two variables cover a corporate gateway or an Azure-style proxy — only the URL changes. The file is loaded with `--env-file .env`; `.env` is git-ignored.
 
 > [!TIP]
 > Images are pulled once and cached by Docker. The first run is slow, later runs are noticeably faster. On rented hardware, warm the cache on a few tasks before launching the full sweep.
@@ -252,13 +285,28 @@ jobs/run-001/2026-08-21__14-44-53/
         └── reward.txt                     1 if the task is resolved, otherwise 0
 ```
 
-> [!IMPORTANT]
-> Harbor does not extract the patch by itself. Make the agent write its final diff to `/logs/artifacts/model_patch.diff` inside the container — Harbor copies that directory to `<trial>/artifacts/logs/artifacts/`, and `collect.py` picks the file up from there. The oracle agent does not write it, so `collect.py` reports `no patches found` on a smoke run; that is expected.
->
-> ```bash
-> git -C /testbed add -A
-> git -C /testbed diff --cached > /logs/artifacts/model_patch.diff
-> ```
+### Where the patch comes from
+
+The patch is produced by the harness, not by the agent. Every `tasks/*/task.toml` declares a collect hook that Harbor runs after the agent phase and before artifact collection:
+
+```toml
+[[verifier.collect]]
+command = '''... git add -A ... git diff --cached --binary "$BASE" > /logs/artifacts/model_patch.diff'''
+timeout_sec = 120.0
+```
+
+Harbor copies `/logs/artifacts/` to `<trial>/artifacts/logs/artifacts/`, so `model_patch.diff` is there for every task whatever agent was used — including an agent that never exports a patch, one that dies on a timeout, and the oracle.
+
+| Property | Detail |
+| :-- | :-- |
+| When | after the agent, before the test patch is applied, so test files never leak into the diff |
+| Baseline | the `task snapshot` root commit, so agents that commit their work are covered too |
+| Contents | modified, added and deleted files, untracked ones included, binaries via `--binary` |
+| Excluded | git-ignored files, `junit.xml`, `task_tests.json`, `*.orig`, `*.rej` |
+| Side effects | none — a private `GIT_INDEX_FILE` keeps the agent's index and `git status` intact |
+| If it fails | Harbor logs a warning in `trial.log`; `swemera.py` then refuses to build the archive |
+
+Do not delete that hook: without it the run produces no patches and nothing can be submitted, however many tasks were solved.
 
 Keep the job directory until the results are submitted: both archives are assembled from it.
 
@@ -268,20 +316,26 @@ Keep the job directory until the results are submitted: both archives are assemb
 
 ### Build the archives
 
-Point the scripts at the timestamped job directory, the one that contains the trials:
+One command scores the run and writes both archives. Point it at the timestamped job directory, the one that contains the trials:
 
 ```bash
-python3 scripts/collect.py --jobs-dir jobs/run-001/2026-08-21__14-44-53
+python3 scripts/swemera.py --jobs-dir jobs/run-001/2026-08-21__14-44-53
 ```
 
-The script maps every trial to a task id through `result.json` (`task_name`) or the trial name, takes the first attempt of each task and writes two archives into the current directory. To build only one of them:
+It maps every trial to a task id through `result.json` (`task_name`) or the trial name, keeps the first attempt of each task, prints the report and packs `sample_submission.zip` and `sample_trajectory.zip`.
 
-```bash
-python3 scripts/collect.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --only submission
-python3 scripts/collect.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --only trajectory
-```
+| Flag | Effect |
+| :-- | :-- |
+| `--score-only` | print the report, write nothing |
+| `--diffs-dir DIR` | also write the diffs as plain `<task-id>.diff` files for review |
+| `--json FILE` | machine-readable report for comparing runs |
+| `--list-failed` | print the unresolved task ids |
+| `--allow-missing` | pack even when some tasks have no patch |
+| `--max-file-mb N` | skip trajectory files above N MB, 25 by default |
 
-Both scripts use the Python standard library only, so any Python 3.11 or newer runs them.
+**The script refuses to build an incomplete archive.** If any task has no patch, it names the tasks, points at the collect hook and exits non-zero without writing anything. That is deliberate: an archive missing patches silently scores those tasks as unresolved, and the mistake is only visible on the leaderboard. Override with `--allow-missing` when you really intend to submit a partial run; the exit code stays non-zero either way, so CI cannot ignore it.
+
+Standard library only, so any Python 3.11 or newer runs it.
 
 ### `sample_submission.zip` — what gets scored
 
@@ -367,35 +421,24 @@ Upload `sample_submission.zip`, and optionally `sample_trajectory.zip`, through 
 
 ## Local scoring
 
-`scripts/score.py` reads `verifier/parse_result.json` from every trial in the job and compares the passed tests against `fail_to_pass` and `pass_to_pass` from `tasks/*/tests/config.json`, applying the same rule as the platform. When the parsed report is missing, it falls back to the Harbor reward in the trial `result.json`. It reports pass@1 over the single attempt of each task; if a task happens to have several trials in the job, only the first one counts.
+`scripts/swemera.py` reads `verifier/parse_result.json` from every trial and compares the passed tests against `fail_to_pass` and `pass_to_pass` from `tasks/*/tests/config.json`, applying the same rule as the platform. When the parsed report is missing, it falls back to the Harbor reward in the trial `result.json`. It reports pass@1 over the single attempt of each task; if a task happens to have several trials in the job, only the first one counts.
+
+Harbor also writes a reward mean into `jobs/<timestamp>/result.json`, but it divides by the trials that actually ran. The leaderboard divides by all 49 tasks, which is what this script reports — hence the separate `evaluated` and `patches` counters.
 
 ```bash
-python3 scripts/score.py --jobs-dir jobs/run-001/2026-08-21__14-44-53
-python3 scripts/score.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --list-failed --json metrics.json
+python3 scripts/swemera.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --score-only
+python3 scripts/swemera.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --score-only --list-failed --json metrics.json
 ```
 
 ```text
-  SWE-MERA-CHALLENGE
-  ──────────────────────────────────────────────────────────
-  pass@1      ████████████████·········   34 / 49    69.39 %
-  evaluated   ████████████████████████    49 / 49
-  ──────────────────────────────────────────────────────────
-  language
-    go        █████████████████·······    13 / 18    72.22 %
-    php       ████████████████········    10 / 15    66.67 %
-    python    █████████████████·······    11 / 16    68.75 %
-  ──────────────────────────────────────────────────────────
-  difficulty
-    easy      ██████████████████████··     9 / 10    90.00 %
-    medium    ██████████████████······    17 / 23    73.91 %
-    hard      ████████████············     8 / 16    50.00 %
-  ──────────────────────────────────────────────────────────
+  pass@1 34/49  69.39%   evaluated 49/49   patches 49/49
 ```
 
 | Row or flag | Meaning |
 | :-- | :-- |
 | `pass@1` | the leaderboard metric: share of the 49 tasks resolved on their single attempt |
 | `evaluated` | how many tasks actually reached the verifier |
+| `patches` | how many tasks produced a diff; anything below `evaluated` means the collect hook failed |
 | gap between `pass@1` and `evaluated` | part of the run died on a timeout or an infrastructure error and should be repeated |
 | `--list-failed` | prints the unresolved task ids |
 | `--json` | writes a machine-readable report for comparing runs |
@@ -424,9 +467,9 @@ In addition:
 | `no match for platform in manifest` | the Docker host cannot run `linux/amd64`; enable emulation or use an x86_64 machine |
 | `range of CPUs is from 0.01 to N` | Docker has fewer cores available than the task requests; give Docker at least 2 cores per concurrent task |
 | the oracle run does not end with reward `1` | environment or Docker issue: check that the daemon is running and that disk space is sufficient |
-| `collect.py` reports `no patches found` | expected for the oracle agent; for your own agent it means the diff was never written to `/logs/artifacts/` |
-| a diff comes out empty | the edits were made outside `/testbed`, or new files were never staged in git |
-| `score.py` sees no trials | `--jobs-dir` must point at the timestamped job directory that contains the `<task-id>__<suffix>` trials |
+| `swemera.py` refuses to pack | some tasks produced no diff; the listed trials' `trial.log` shows why the collect hook failed |
+| a diff comes out empty | the agent changed nothing, or it worked outside `/testbed` |
+| `swemera.py` sees no trials | `--jobs-dir` must point at the timestamped job directory that contains the `<task-id>__<suffix>` trials |
 | `pass@1` is far below expectation | `pass_to_pass` regressions; inspect the verifier logs under `jobs/` |
 | tasks fail with timeouts | lower `-n`, the machine lacks CPU or memory |
 | large gap between `evaluated` and 49 | some tasks never reached the verifier; rerun them separately |
