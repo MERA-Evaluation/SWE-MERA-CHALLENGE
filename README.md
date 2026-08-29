@@ -7,7 +7,7 @@
 <p>
   <img alt="tasks" src="https://img.shields.io/badge/tasks-49-1f6feb?style=flat-square&labelColor=0d1117">
   <img alt="languages" src="https://img.shields.io/badge/Go%2018%20·%20Python%2016%20·%20PHP%2015-24292f?style=flat-square&labelColor=0d1117">
-  <img alt="runner" src="https://img.shields.io/badge/runner-Harbor%200.17.1-6e40c9?style=flat-square&labelColor=0d1117">
+  <img alt="runner" src="https://img.shields.io/badge/runner-Harbor%200.22.0-6e40c9?style=flat-square&labelColor=0d1117">
   <img alt="metric" src="https://img.shields.io/badge/metric-pass%401-1a7f37?style=flat-square&labelColor=0d1117">
 </p>
 
@@ -47,7 +47,7 @@ The benchmark is packaged in the [Harbor](https://github.com/laude-institute/har
 | Difficulty | 10 easy, 23 medium, 16 hard |
 | Per-task limits | 2 CPU, 4 GB RAM, 16 GB disk, 3600 s agent, 3600 s verifier |
 | Image platform | `linux/amd64` |
-| Runner | Harbor 0.17.1, pinned in `requirements.txt` |
+| Runner | Harbor 0.22.0, pinned in `requirements.txt` |
 | Metric | pass@1 over all 49 tasks |
 | Deliverable | `sample_submission.zip`, optionally `sample_trajectory.zip` |
 
@@ -132,7 +132,7 @@ pip install -r requirements.txt
 harbor --version
 ```
 
-`harbor --version` must print `0.17.1`.
+`harbor --version` must print `0.22.0`.
 
 ### Check Docker
 
@@ -465,7 +465,7 @@ In addition:
 
 | Symptom | Cause and fix |
 | :-- | :-- |
-| `harbor --version` prints something other than `0.17.1` | the environment was not installed from `requirements.txt`; recreate the virtualenv |
+| `harbor --version` prints something other than `0.22.0` | the environment was not installed from `requirements.txt`; recreate the virtualenv |
 | `no match for platform in manifest` | the Docker host cannot run `linux/amd64`; enable emulation or use an x86_64 machine |
 | `range of CPUs is from 0.01 to N` | Docker has fewer cores available than the task requests; give Docker at least 2 cores per concurrent task |
 | the oracle run does not end with reward `1` | environment or Docker issue: check that the daemon is running and that disk space is sufficient |
