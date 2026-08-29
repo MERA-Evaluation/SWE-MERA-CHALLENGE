@@ -215,7 +215,7 @@ The same two variables cover a corporate gateway or an Azure-style proxy — onl
 The oracle agent applies the upstream patch, so the task must resolve and the reward must be `1`. If it does not, the problem is in the environment rather than in the model.
 
 ```bash
-harbor run -p tasks -i go-001 -a oracle -o jobs/smoke -n 1 -y
+harbor run -p tasks -i go-001 -a oracle -o jobs/smoke --n-attempts 1 -n 1 -y
 ```
 
 | Flag | Meaning |
@@ -225,12 +225,13 @@ harbor run -p tasks -i go-001 -a oracle -o jobs/smoke -n 1 -y
 | `-a, --agent` | agent to run, `oracle` for the reference patch |
 | `-m, --model` | model name passed to the agent |
 | `-o, --jobs-dir` | where job results are written |
+| `-k, --n-attempts` | attempts per trial; the metric is pass@1, so always `1` |
 | `-n, --n-concurrent` | number of concurrent trials |
 | `-y` | auto-confirm prompts |
 
 ### Run your own model
 
-The metric is pass@1, so a scoring run gives every task a single attempt, which is the Harbor default (`-k 1`):
+The metric is pass@1, so a scoring run gives every task a single attempt. That is already the Harbor default, but pass `--n-attempts 1` explicitly so the run cannot inherit a different value from a config file or a shell alias:
 
 ```bash
 harbor run \
@@ -239,6 +240,7 @@ harbor run \
   -m openrouter/qwen/qwen3.7-flash \
   --env-file .env \
   -o jobs/run-001 \
+  --n-attempts 1 \
   -n 2 \
   -y
 ```
@@ -252,7 +254,7 @@ Choose `-n` according to the available hardware: one task takes 2 cores and 4 GB
 While tuning the agent, run a small mixed-language subset — it gives a signal in minutes instead of hours.
 
 ```bash
-harbor run -p tasks -i go-012 -i php-001 -i py-005 -a oracle -o jobs/run-002 -y
+harbor run -p tasks -i go-012 -i php-001 -i py-005 -a oracle -o jobs/run-002 --n-attempts 1 -y
 ```
 
 ### What the run produces
