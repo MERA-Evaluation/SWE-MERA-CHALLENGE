@@ -2,477 +2,470 @@
 
 # SWE-MERA-CHALLENGE
 
-**49 issue-resolving tasks built from real open-source bug fixes.**
+**Fresh, uncontaminated real-world software engineering tasks across Go, Python, PHP, and more.**
 
 <p>
-  <img alt="tasks" src="https://img.shields.io/badge/tasks-49-1f6feb?style=flat-square&labelColor=0d1117">
-  <img alt="languages" src="https://img.shields.io/badge/Go%2018%20·%20Python%2016%20·%20PHP%2015-24292f?style=flat-square&labelColor=0d1117">
   <img alt="runner" src="https://img.shields.io/badge/runner-Harbor%200.22.0-6e40c9?style=flat-square&labelColor=0d1117">
   <img alt="metric" src="https://img.shields.io/badge/metric-pass%401-1a7f37?style=flat-square&labelColor=0d1117">
+  <img alt="tasks" src="https://img.shields.io/badge/tasks-49-1f6feb?style=flat-square&labelColor=0d1117">
+  <img alt="languages" src="https://img.shields.io/badge/Go%2018%20·%20Python%2016%20·%20PHP%2015-24292f?style=flat-square&labelColor=0d1117">
 </p>
-
-<sub>
-<a href="#overview">Overview</a> ·
-<a href="#task-anatomy">Task anatomy</a> ·
-<a href="#installation">Installation</a> ·
-<a href="#running-the-benchmark">Running</a> ·
-<a href="#submitting-results">Submitting</a> ·
-<a href="#local-scoring">Local scoring</a> ·
-<a href="#rules-and-penalties">Rules</a> ·
-<a href="#troubleshooting">Troubleshooting</a>
-</sub>
 
 </div>
 
----
-
-## Overview
-
-Every task in this benchmark is a real defect from a real repository. The repository is checked out at the parent commit of the upstream fix, the agent receives the original issue description and works inside `/testbed`. Once the agent stops, the verifier applies the test patch from the upstream pull request and runs the suite.
-
-A task counts as **resolved** only when both conditions hold:
-
-1. every test listed in `fail_to_pass` passes — these are the tests that failed before the fix;
-2. every test listed in `pass_to_pass` still passes — no regressions are allowed.
-
-The leaderboard metric is **pass@1**: each task is given exactly one attempt, and the score is the share of tasks resolved by that attempt. Additional attempts do not improve the result.
-
-The second condition carries real weight. Some tasks list tens of thousands of `pass_to_pass` tests — `php-001` alone lists 46,118 — so a patch that turns the target tests green by breaking behaviour elsewhere scores zero on that task.
-
-The benchmark is packaged in the [Harbor](https://github.com/laude-institute/harbor) task format. Environment images are published on Docker Hub and pinned by digest in `dataset.toml`, so nothing has to be built from source.
-
-| | |
-| :-- | :-- |
-| Tasks | 49 — 18 Go, 16 Python, 15 PHP |
-| Difficulty | 10 easy, 23 medium, 16 hard |
-| Per-task limits | 2 CPU, 4 GB RAM, 16 GB disk, 3600 s agent, 3600 s verifier |
-| Image platform | `linux/amd64` |
-| Runner | Harbor 0.22.0, pinned in `requirements.txt` |
-| Metric | pass@1 over all 49 tasks |
-| Deliverable | `sample_submission.zip`, optionally `sample_trajectory.zip` |
-
----
-
-## Task anatomy
-
-Repository layout:
-
-```text
-SWE-MERA-CHALLENGE/
-├── dataset.toml              task list with pinned image digests
-├── requirements.txt          fully pinned Harbor runner environment
-├── tasks/<task-id>/          49 task definitions
-├── scripts/
-│   └── swemera.py            scoring and packaging in one command
-├── configs/
-│   └── .env.example          API key template
-└── example_submission/       a reference submission: submission.csv and diffs/
-```
-
-A single task looks like this:
-
-```text
-tasks/go-001/
-├── instruction.md            the agent prompt: issue text, scope, completion criteria
-├── task.toml                 language, difficulty, repo, base_commit, resource limits
-├── environment/
-│   └── Dockerfile            derives from the public image and strips fix/test artifacts
-├── solution/
-│   ├── fix.patch             the upstream maintainer patch, reference only
-│   └── solve.sh              oracle agent: applies fix.patch
-└── tests/
-    ├── config.json           command_build, command_test, fail_to_pass, pass_to_pass
-    ├── test.patch            tests from the upstream pull request
-    ├── run_tests.py          applies the test patch, runs the suite, parses junit.xml
-    ├── parse                 report parser
-    └── test.sh               verifier entrypoint
-```
-
-Properties worth knowing before the first run:
-
-| Property | Practical consequence |
-| :-- | :-- |
-| `/testbed` is the only writable work area | changes made outside it never reach the diff |
-| Git history is truncated to a single snapshot | the upstream fix commit cannot be recovered from the repository |
-| The image is stripped of `fix.patch`, `test.patch` and gold evaluation helpers | no reference solution is reachable from inside the container |
-| Tests are injected only at verification time | the agent cannot read `fail_to_pass` or shape code around test names |
-| The deliverable is a `git diff` taken inside `/testbed` | new files must be staged with `git add`, otherwise they are absent from the patch |
-| Toolchains differ per language | Go uses `gotestsum`, PHP uses `composer install` and `phpunit`, Python uses `pip install -e .` and `pytest` |
-| Results are reported through `junit.xml` | test identifiers in `config.json` match the parsed report, not raw console output |
-
----
-
-## Installation
+## Setup
 
 ### Requirements
 
-| Component | Version | Why |
+uv, Docker, Git, and 60 GB of free disk space.
+
+<details>
+<summary>Detailed requirements</summary>
+
+| Component | Version or capacity | Why |
 | :-- | :-- | :-- |
-| Python | `3.12` or newer | Harbor requires it; check with `python3 --version` |
-| Docker | `>= 24`, daemon running | every task executes in a container |
-| Git | `>= 2.30` | cloning and diff handling |
-| Disk | `>= 60 GB` free | task images are large, the PHP ones especially |
-| CPU | `>= 2` cores per concurrent task | the container limit is 2 |
-| RAM | `>= 4 GB` per concurrent task | the container limit is 4 GB |
-| Architecture | `x86_64` host, or Docker with `linux/amd64` emulation | the images are amd64-only |
+| uv | `>= 0.8.0` | Manages Python and the virtual environment. |
+| Python | `3.12`, managed by uv | Runs the pinned Harbor environment. |
+| Docker | `>= 24` with the daemon running | Every task executes in a container. |
+| Git | `>= 2.30` | Used for cloning and diff handling. |
+| Disk | `>= 60 GB` free | Task images are large, especially the PHP images. |
+| CPU | `>= 2` cores per concurrent task | Each container is limited to two cores. |
+| RAM | `>= 4 GB` per concurrent task | Each container is limited to 4 GB. |
+| Architecture | `x86_64`, or Docker with `linux/amd64` emulation | Task images are amd64-only. |
 
-### Setup
+</details>
 
-Install the runner from `requirements.txt`. It pins Harbor and every transitive dependency, so the environment is reproducible; installing `harbor` alone resolves different dependency versions and breaks in various ways.
+### Install
+
+uv pins Python 3.12, creates the virtual environment, downloads the interpreter when necessary, and installs the pinned dependencies:
 
 ```bash
 git clone https://github.com/MERA-Evaluation/SWE-MERA-CHALLENGE.git
 cd SWE-MERA-CHALLENGE
 
-python3 --version
-python3 -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-
-harbor --version
+uv python pin 3.12
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+uv run --python .venv/bin/python -- harbor --version
 ```
 
-`harbor --version` must print `0.22.0`.
+The last command must print `0.22.0`.
 
-### Check Docker
+<details>
+<summary>If uv or Python 3.12 is not installed</summary>
 
-The daemon must be running and able to execute `linux/amd64` images before the first task is launched:
+If Python 3.12 is missing, no separate Python installation is required: `uv venv --python 3.12 .venv` downloads a managed interpreter automatically.
 
-```bash
-docker info
-docker run --rm --platform=linux/amd64 hello-world
-```
+If `uv` itself is missing, install it using the [official uv installation guide](https://docs.astral.sh/uv/getting-started/installation/), then rerun the setup commands.
+
+</details>
 
 ### Model configuration
 
-Harbor resolves models through LiteLLM, so a model is selected by the agent flag and the model name, and credentials come from the environment:
+Store provider credentials in `.env`, then select the model and agent using the `harbor run` arguments below.
 
 ```bash
 cp configs/.env.example .env
 vim .env
 ```
 
-**Fill in the key of one provider and delete the rest.** An empty variable is ignored, but a variable holding a wrong or expired key makes the run fail with `401` even when another provider is configured correctly. The `*_API_BASE` / `*_BASE_URL` lines carry the provider defaults: keep them as they are unless you route through a proxy, a regional endpoint or a local server.
+<details>
+<summary>Credential troubleshooting</summary>
 
-Each block below is one complete, self-sufficient configuration.
+Harbor resolves models through LiteLLM.
 
-**OpenRouter** — `-m openrouter/qwen/qwen3.7-flash`
+Configure one provider and delete the rest. Empty variables are ignored, but an incorrect or expired key can cause a `401` even when another provider is configured correctly. Keep the default `*_API_BASE` or `*_BASE_URL` unless you use a proxy, regional endpoint, or local server.
+
+</details>
+
+<details>
+<summary>Set up OpenRouter, OpenAI, Anthropic, or Gemini</summary>
+
+Each block below is a complete configuration.
+
+**OpenRouter** with `--model openrouter/qwen/qwen3.7-flash`:
 
 ```dotenv
-OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
 OPENROUTER_API_BASE=https://openrouter.ai/api/v1
 ```
 
-**OpenAI** — `-m openai/gpt-5.4`
+**OpenAI** with `--model openai/gpt-5.4`:
 
 ```dotenv
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 OPENAI_BASE_URL=https://api.openai.com/v1
 ```
 
-**Anthropic** — `-m anthropic/claude-sonnet-4.6`
+**Anthropic** with `--model anthropic/claude-sonnet-4-6`:
 
 ```dotenv
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_API_BASE=https://api.anthropic.com
+ANTHROPIC_API_KEY=YOUR_ANTHROPIC_API_KEY
 ```
 
-**Gemini** — `-m gemini/gemini-3.1-pro`
+**Gemini** with `--model gemini/gemini-3.1-pro-preview`:
 
 ```dotenv
-GEMINI_API_KEY=...
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 ```
 
-**A local or self-hosted model** — vLLM, SGLang, TGI, llama.cpp, LM Studio, Ollama or any proxy that speaks the OpenAI protocol. Reuse the OpenAI variables and point them at your server:
+</details>
+
+<details>
+<summary>Set up a self-hosted model</summary>
+
+To use an **OpenAI-compatible local or self-hosted model**, such as vLLM, SGLang, TGI, llama.cpp, LM Studio, Ollama, or a compatible proxy, configure the following variables:
 
 ```dotenv
 OPENAI_API_KEY=dummy
 OPENAI_BASE_URL=http://host.docker.internal:8000/v1
 ```
 
+</details>
+
+<details>
+<summary>Endpoint details</summary>
+
 | Rule | Detail |
 | :-- | :-- |
-| URL shape | must end with `/v1`; do not append `/chat/completions`, the client adds the route |
-| From a container | `localhost` means the container itself — use `host.docker.internal` or the host IP |
-| The key | most local servers ignore it, but the client requires a non-empty value, hence `dummy` |
-| Model name | pass `-m openai/<name>` where `<name>` is what the server reports: `curl $OPENAI_BASE_URL/models` |
-| Endpoint | the agents use Chat Completions (`/v1/chat/completions`); a server exposing only `/v1/responses` will not work |
+| URL shape | End it with `/v1`. Do not append `/chat/completions`; the client adds that route. |
+| From a container | `localhost` means the container. Use `host.docker.internal` or the host IP. |
+| API key | Most local servers ignore it, but the client requires a non-empty value such as `dummy`. |
+| Model name | Pass `--model openai/<name>`, using the name returned by `curl http://localhost:8000/v1/models` from the host shell. Keep `host.docker.internal` in `.env` for the agent container. |
+| Endpoint | Agents use Chat Completions at `/v1/chat/completions`. A server exposing only `/v1/responses` is not compatible. |
 
-The same two variables cover a corporate gateway or an Azure-style proxy — only the URL changes. The file is loaded with `--env-file .env`; `.env` is git-ignored.
+The same OpenAI variables work with a corporate gateway or an Azure-style proxy; only the URL changes. Harbor loads `.env` through `--env-file .env`, and `.env` is ignored by Git.
 
-> [!TIP]
-> Images are pulled once and cached by Docker. The first run is slow, later runs are noticeably faster. On rented hardware, warm the cache on a few tasks before launching the full sweep.
+</details>
 
-> [!NOTE]
-> Verification time varies a lot between tasks. A Go task finishes in under a minute, while a large PHP task runs tens of thousands of `pass_to_pass` tests and needs tens of minutes on 2 cores. On an arm64 host the amd64 images run under emulation and everything becomes several times slower, which can push the biggest PHP tasks into the 3600 s verifier timeout; run the scoring sweep on a native `x86_64` machine.
+<details>
+<summary>Tips and tricks</summary>
 
----
+> **Tip:** Images are pulled once and cached by Docker. The first run is slow; later runs are faster. On rented hardware, warm the cache on a few tasks before launching the full sweep.
 
-## Running the benchmark
+> **Note:** Verification times vary widely. A Go task can finish in under a minute, while a large PHP task runs tens of thousands of `pass_to_pass` tests and can take tens of minutes on two cores. On arm64, amd64 emulation is several times slower and can push the largest PHP tasks into the 3600 s verifier timeout. Prefer native `x86_64` hardware for a scoring sweep.
 
-### Validate the harness first
+</details>
 
-The oracle agent applies the upstream patch, so the task must resolve and the reward must be `1`. If it does not, the problem is in the environment rather than in the model.
+## Run
 
-```bash
-harbor run -p tasks -i go-001 -a oracle -o jobs/smoke --n-attempts 1 -n 1 -y
-```
+### Smoke test
 
-| Flag | Meaning |
-| :-- | :-- |
-| `-p, --path` | path to the task directory, here `tasks` |
-| `-i, --include-task-name` | task name or glob; repeat the flag for several tasks |
-| `-a, --agent` | agent to run, `oracle` for the reference patch |
-| `-m, --model` | model name passed to the agent |
-| `-o, --jobs-dir` | where job results are written |
-| `-k, --n-attempts` | attempts per trial; the metric is pass@1, so always `1` |
-| `-n, --n-concurrent` | number of concurrent trials |
-| `-y` | auto-confirm prompts |
-
-### Run your own model
-
-The metric is pass@1, so a scoring run gives every task a single attempt. That is already the Harbor default, but pass `--n-attempts 1` explicitly so the run cannot inherit a different value from a config file or a shell alias:
+The oracle applies the reference patch. It should finish with a reward of `1`.
 
 ```bash
-harbor run \
-  -p tasks \
-  -a mini-swe-agent \
-  -m openrouter/qwen/qwen3.7-flash \
-  --env-file .env \
-  -o jobs/run-001 \
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --include-task-name go-001 \
+  --agent oracle \
+  --jobs-dir jobs/smoke \
   --n-attempts 1 \
-  -n 2 \
-  -y
+  --n-concurrent 1 \
+  --yes
 ```
 
-Any Harbor agent works: `terminus-2`, `mini-swe-agent`, `swe-agent`, `openhands`, `claude-code`, `codex` and others; run `harbor run --help` for the full list, or pass an import path to your own implementation.
+<a name="troubleshooting"></a>
+<details>
+<summary>Smoke test and troubleshooting</summary>
 
-Choose `-n` according to the available hardware: one task takes 2 cores and 4 GB of RAM, so four in parallel already imply 8 cores and 16 GB.
-
-### Subsets
-
-While tuning the agent, run a small mixed-language subset — it gives a signal in minutes instead of hours.
+If the smoke test cannot start, verify that Docker is installed, its daemon is running, and it can execute the benchmark's `linux/amd64` images:
 
 ```bash
-harbor run -p tasks -i go-012 -i php-001 -i py-005 -a oracle -o jobs/run-002 --n-attempts 1 -y
+docker info
+docker run --rm --platform=linux/amd64 hello-world
 ```
 
-### What the run produces
+| Symptom | Cause and fix |
+| :-- | :-- |
+| `docker: command not found` | Install Docker Engine or Docker Desktop, then rerun the checks above. |
+| Cannot connect to the Docker daemon | Start Docker and wait until `docker info` succeeds. |
+| `harbor --version` prints something other than `0.22.0` | Rerun the uv setup commands from [Install](#install). |
+| `no match for platform in manifest` | Enable `linux/amd64` emulation or use an `x86_64` machine. |
+| `range of CPUs is from 0.01 to N` | Give Docker at least two cores per concurrent task. |
+| The oracle reward is not `1` | Confirm that Docker is running and enough disk space is available. |
+| pass@1 is unexpectedly low | Check `pass_to_pass` regressions in the verifier logs under `jobs/`. |
+| Tasks time out | Lower `--n-concurrent`; the machine is short of CPU or memory. |
+| API authentication fails | Check the selected key and remove invalid credentials for unused providers from `.env`. |
 
-Harbor writes one job directory per run, and inside it one trial directory per attempt, named `<task-id>__<suffix>`:
+</details>
+
+###  Run the full benchmark
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --agent mini-swe-agent \
+  --model openrouter/qwen/qwen3.7-flash \
+  --env-file .env \
+  --jobs-dir jobs/run-001 \
+  --n-attempts 1 \
+  --n-concurrent 2 \
+  --yes
+```
+> **Estimated cost:** Approximately 1.5 USD for a full run with this model.
+<details>
+<summary>Run with OpenHands, Claude Code, or a custom agent</summary>
+
+#### OpenHands
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --agent openhands \
+  --model openrouter/qwen/qwen3.7-flash \
+  --env-file .env \
+  --jobs-dir jobs/openhands \
+  --n-attempts 1 \
+  --n-concurrent 2 \
+  --yes
+```
+
+#### Claude Code
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --agent claude-code \
+  --model anthropic/claude-sonnet-4-6 \
+  --env-file .env \
+  --jobs-dir jobs/claude-code \
+  --n-attempts 1 \
+  --n-concurrent 2 \
+  --yes
+```
+
+#### Custom agent
+
+Replace `your_package.agent:CustomAgent` with the agent's Python import path.
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --agent your_package.agent:CustomAgent \
+  --model openai/gpt-5.4 \
+  --env-file .env \
+  --jobs-dir jobs/custom-agent \
+  --n-attempts 1 \
+  --n-concurrent 2 \
+  --yes
+```
+
+The package must be importable from `.venv`. Pass custom constructor arguments with the repeatable `--agent-kwarg key=value` option.
+
+</details>
+
+## Submit results
+
+Point the packaging script at the timestamped job directory:
+
+```bash
+scripts/create-submission.sh jobs/run-001/2026-08-30__05-45-50
+```
+
+This creates `sample_submission.zip`. Attach that file to the submission form on the competition website.
+
+## Rules
+
+- Give each task exactly one attempt.
+- Submit only patches produced by the agent during the run.
+- Do not use gold patches, evaluation tests, or test-specific workarounds.
+- Retain the Harbor job directory and trajectories for verification.
+<a name="task-overview"></a>
+<details>
+<summary><strong>Task overview</strong></summary>
+
+Every task is a real defect from a real repository. The repository is checked out at the parent commit of the upstream fix, the agent receives the original issue description, and it works inside `/testbed`. After the agent stops, the verifier applies the test patch from the upstream pull request and runs the suite.
+
+A task counts as **resolved** only when both conditions hold:
+
+1. every test listed in `fail_to_pass` passes; these tests failed before the fix;
+2. every test listed in `pass_to_pass` still passes, so no regression is allowed.
+
+The leaderboard metric is **pass@1**. Each task receives exactly one attempt, and the score is the share of all 49 tasks resolved by that attempt. Additional attempts do not improve the result.
+
+Regression coverage matters. Some tasks list tens of thousands of `pass_to_pass` tests; `php-001` alone lists 46,118. A patch that fixes the target tests by breaking other behaviour scores zero for that task.
+
+The benchmark uses the [Harbor](https://github.com/laude-institute/harbor) task format. `dataset.toml` pins the task packages, and every task uses a Docker environment published on Docker Hub, so nothing needs to be built from source.
+
+| | |
+| :-- | :-- |
+| Tasks | 49: 18 Go, 16 Python, 15 PHP |
+| Difficulty | 10 easy, 23 medium, 16 hard |
+| Per-task limits | 2 CPU, 4 GB RAM, 16 GB disk, 3600 s agent, 3600 s verifier |
+| Image platform | `linux/amd64` |
+| Runner | Harbor 0.22.0, pinned in `requirements.txt` |
+| Metric | pass@1 over all 49 tasks |
+| Deliverable | `sample_submission.zip` |
+
+</details>
+<a name="task-structure"></a>
+<details>
+<summary><strong>Task structure</strong></summary>
+
+Repository layout:
+
+```text
+SWE-MERA-CHALLENGE/
+├── dataset.toml              task list with pinned package digests
+├── requirements.txt          fully pinned Harbor runner environment
+├── tasks/<task-id>/          49 task definitions
+├── scripts/
+│   └── create-submission.sh   packages a Harbor run as sample_submission.zip
+└── configs/
+    └── .env.example          API key template
+```
+
+A single task looks like this:
+
+```text
+tasks/go-001/
+├── instruction.md            agent prompt with issue, scope, and completion criteria
+├── task.toml                 language, difficulty, repo, base_commit, and limits
+├── environment/
+│   └── Dockerfile            derives from the public image and strips fix/test artifacts
+├── solution/
+│   ├── fix.patch             upstream maintainer patch, for the oracle only
+│   └── solve.sh              oracle agent that applies fix.patch
+└── tests/
+    ├── config.json           build/test commands, fail_to_pass, and pass_to_pass
+    ├── test.patch            tests from the upstream pull request
+    ├── run_tests.py          applies tests, runs the suite, and parses junit.xml
+    ├── parse                 report parser
+    └── test.sh               verifier entrypoint
+```
+
+| Property | Practical consequence |
+| :-- | :-- |
+| `/testbed` is the only writable work area | Changes made outside it never reach the diff. |
+| Git history is truncated to one snapshot | The upstream fix commit cannot be recovered from the repository. |
+| The image is stripped of `fix.patch`, `test.patch`, and gold evaluation helpers | No reference solution is reachable from inside the container. |
+| Tests are injected only during verification | The agent cannot read `fail_to_pass` or tailor code to test names. |
+| The deliverable is a Git diff from `/testbed` | The collect hook includes modified, deleted, binary, and untracked files; work does not need to be committed, but it must remain inside `/testbed`. |
+| Toolchains differ by language | Go uses `gotestsum`, PHP uses `composer install` with PHPUnit or Pest, and Python uses `pip install -e .` and `pytest`. |
+| Results use `junit.xml` | Test identifiers in `config.json` match the parsed report rather than raw console output. |
+
+</details>
+<a name="how-to-progress"></a>
+<details>
+<summary><strong>How to progress</strong></summary>
+
+### Validate the harness
+
+Run the oracle before testing a model. It applies the upstream patch, so the run must finish with a reward of `1`. Any other result points to the environment rather than the model.
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --include-task-name go-001 \
+  --agent oracle \
+  --jobs-dir jobs/smoke \
+  --n-attempts 1 \
+  --n-concurrent 1 \
+  --yes
+```
+
+### Run a model
+
+Pass `--n-attempts 1` explicitly even though it is Harbor's default, so the run cannot inherit another value from configuration or a shell alias.
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --agent mini-swe-agent \
+  --model openrouter/qwen/qwen3.7-flash \
+  --env-file .env \
+  --jobs-dir jobs/run-001 \
+  --n-attempts 1 \
+  --n-concurrent 2 \
+  --yes
+```
+
+Harbor agents include `terminus-2`, `mini-swe-agent`, `swe-agent`, `openhands`, `claude-code`, and `codex`. Run `uv run --python .venv/bin/python -- harbor run --help` for the complete list, or pass an import path for a custom implementation.
+
+Choose `--n-concurrent` for the available hardware. Each concurrent task can consume two CPU cores and 4 GB of RAM, so four tasks imply at least eight cores and 16 GB of RAM.
+
+### Run a subset
+
+Use a mixed-language subset while tuning:
+
+```bash
+uv run --python .venv/bin/python -- harbor run \
+  --path tasks \
+  --include-task-name go-012 \
+  --include-task-name php-001 \
+  --include-task-name py-005 \
+  --agent oracle \
+  --jobs-dir jobs/run-002 \
+  --n-attempts 1 \
+  --yes
+```
+
+### Job output
+
+Harbor creates one timestamped job directory and one `<task-id>__<suffix>` directory per trial:
 
 ```text
 jobs/run-001/2026-08-21__14-44-53/
-├── config.json                            the task list the job was launched with
-├── lock.json                              harbor version, concurrency, resolved trials
-├── result.json                            job-level stats and per-eval reward summary
+├── config.json
+├── lock.json
+├── result.json
 ├── job.log
 └── go-001__cEAJUzd/
-    ├── config.json                        task path, trial name, job id
-    ├── lock.json                          task digest, agent, environment
-    ├── result.json                        task_name, agent_info, verifier_result.rewards.reward, timings
+    ├── config.json
+    ├── lock.json
+    ├── result.json
     ├── trial.log
-    ├── agent/                             whatever the agent writes: logs, trajectory, tool calls
+    ├── agent/
     ├── artifacts/
-    │   ├── manifest.json                  what was copied out of the container
-    │   └── logs/artifacts/                everything the agent left in /logs/artifacts
+    │   ├── manifest.json
+    │   └── logs/artifacts/model_patch.diff
     └── verifier/
         ├── apply_test_patch.log
         ├── command_build.log
         ├── command_test.log
         ├── test-stdout.txt
         ├── parse.log
-        ├── parse_result.json              passed_tests, failed_tests, skipped_tests, ignored_tests
-        ├── report.json                    build and test return codes, junit_found, reward
-        └── reward.txt                     1 if the task is resolved, otherwise 0
+        ├── parse_result.json
+        ├── report.json
+        └── reward.txt
 ```
 
-### Where the patch comes from
+At job level, `config.json` records the launched task list, `lock.json` records the Harbor version, concurrency, and resolved trials, `result.json` holds aggregate and per-evaluation rewards, and `job.log` records the run.
 
-The patch is produced by the harness, not by the agent. Every `tasks/*/task.toml` declares a collect hook that Harbor runs after the agent phase and before artifact collection:
+Inside each trial, `config.json` records the task path, trial name, and job id; `lock.json` records the task digest, agent, and environment; `result.json` records `task_name`, `agent_info`, `verifier_result.rewards.reward`, and timings. The `agent/` directory contains the agent's logs, trajectory, and tool calls. The `verifier/` directory contains build, test, parser, and reward outputs.
 
-```toml
-[[verifier.collect]]
-command = '''... git add -A ... git diff --cached --binary "$BASE" > /logs/artifacts/model_patch.diff'''
-timeout_sec = 120.0
-```
+`artifacts/manifest.json` records what Harbor copied from the container, while `artifacts/logs/artifacts/` contains everything the agent left in `/logs/artifacts`. In `verifier/`, `parse_result.json` lists passed, failed, skipped, and ignored tests; `report.json` records build and test return codes, whether JUnit output was found, and the reward; `reward.txt` is `1` for a resolved task and `0` otherwise.
 
-Harbor copies `/logs/artifacts/` to `<trial>/artifacts/logs/artifacts/`, so `model_patch.diff` is there for every task whatever agent was used — including an agent that never exports a patch, one that dies on a timeout, and the oracle.
+### Patch collection
+
+The harness, not the agent, produces the submission patch. Every `tasks/*/task.toml` has a `[[verifier.collect]]` hook with a 120-second timeout. Harbor runs it after the agent phase and before artifact collection. Using a private Git index, the hook runs `git add -A`, removes the excluded files from that index, and writes `git diff --cached --binary` against the task snapshot to `/logs/artifacts/model_patch.diff`. Harbor then copies it to `<trial>/artifacts/logs/artifacts/model_patch.diff`.
+
+The hook runs for every agent, including agents that do not export a patch, time out, or use the oracle.
 
 | Property | Detail |
 | :-- | :-- |
-| When | after the agent, before the test patch is applied, so test files never leak into the diff |
-| Baseline | the `task snapshot` root commit, so agents that commit their work are covered too |
-| Contents | modified, added and deleted files, untracked ones included, binaries via `--binary` |
-| Excluded | git-ignored files, `junit.xml`, `task_tests.json`, `*.orig`, `*.rej` |
-| Side effects | none — a private `GIT_INDEX_FILE` keeps the agent's index and `git status` intact |
-| If it fails | Harbor logs a warning in `trial.log`; `swemera.py` then refuses to build the archive |
+| Timing | The patch is collected before the test patch is applied, so test files cannot leak into the diff. |
+| Baseline | The task snapshot root commit, so committed agent work is included. |
+| Contents | Modified, added, deleted, untracked, and binary files through a binary Git diff. |
+| Exclusions | Git-ignored files, `junit.xml`, `task_tests.json`, `*.orig`, and `*.rej`. |
+| Side effects | A private Git index keeps the agent's index and `git status` unchanged. |
+| Failure | Harbor records a warning in `trial.log`; inspect it before packaging the run. |
 
-Do not delete that hook: without it the run produces no patches and nothing can be submitted, however many tasks were solved.
+Do not delete the collect hook. Without it, solved tasks still produce no patches and cannot be submitted. Keep the complete job directory until `sample_submission.zip` has been created and uploaded.
 
-Keep the job directory until the results are submitted: both archives are assembled from it.
+</details>
+<a name="rules-and-penalties"></a>
+<details>
+<summary><strong>Full rules and penalties</strong></summary>
 
----
-
-## Submitting results
-
-### Build the archives
-
-One command scores the run and writes both archives. Point it at the timestamped job directory, the one that contains the trials:
-
-```bash
-python3 scripts/swemera.py --jobs-dir jobs/run-001/2026-08-21__14-44-53
-```
-
-It maps every trial to a task id through `result.json` (`task_name`) or the trial name, keeps the first attempt of each task, prints the report and packs `sample_submission.zip` and `sample_trajectory.zip`.
-
-| Flag | Effect |
-| :-- | :-- |
-| `--score-only` | print the report, write nothing |
-| `--diffs-dir DIR` | also write the diffs as plain `<task-id>.diff` files for review |
-| `--json FILE` | machine-readable report for comparing runs |
-| `--list-failed` | print the unresolved task ids |
-| `--allow-missing` | pack even when some tasks have no patch |
-| `--max-file-mb N` | skip trajectory files above N MB, 25 by default |
-
-**The script refuses to build an incomplete archive.** If any task has no patch, it names the tasks, points at the collect hook and exits non-zero without writing anything. That is deliberate: an archive missing patches silently scores those tasks as unresolved, and the mistake is only visible on the leaderboard. Override with `--allow-missing` when you really intend to submit a partial run; the exit code stays non-zero either way, so CI cannot ignore it.
-
-Standard library only, so any Python 3.11 or newer runs it.
-
-### `sample_submission.zip` — what gets scored
-
-```text
-submission.csv
-diffs/go-001.diff
-diffs/go-002.diff
-...
-diffs/py-020.diff
-```
-
-`submission.csv` has exactly two columns:
-
-```csv
-task_id,diff_path
-go-001,diffs/go-001.diff
-go-002,diffs/go-002.diff
-php-001,diffs/php-001.diff
-py-001,diffs/py-001.diff
-```
-
-| Field | Requirement |
-| :-- | :-- |
-| `task_id` | must match a directory name under `tasks/`, for example `go-001` |
-| `diff_path` | path inside the archive, one diff per task |
-| diff format | unified diff applied to `/testbed` with `git apply` |
-| encoding | UTF-8, LF line endings |
-| missing tasks | allowed, but scored as unresolved |
-
-### `sample_trajectory.zip` — what backs the score
-
-This archive is the Harbor job directory as it stands on disk, nothing reshaped and nothing invented:
-
-```text
-2026-08-21__14-44-53/config.json
-2026-08-21__14-44-53/lock.json
-2026-08-21__14-44-53/result.json
-2026-08-21__14-44-53/job.log
-2026-08-21__14-44-53/go-001__cEAJUzd/result.json
-2026-08-21__14-44-53/go-001__cEAJUzd/agent/
-2026-08-21__14-44-53/go-001__cEAJUzd/artifacts/logs/artifacts/model_patch.diff
-2026-08-21__14-44-53/go-001__cEAJUzd/verifier/report.json
-2026-08-21__14-44-53/go-001__cEAJUzd/verifier/parse_result.json
-...
-```
-
-The trial `result.json` records the task, the agent and its model, the reward and the timings. The `agent/` directory holds everything the agent logged, including the trajectory. The `verifier/` directory holds the build and test logs, the parsed report and the reward. Together they let us review how a patch was produced and reproduce the run. Files larger than `--max-file-mb`, 25 MB by default, are skipped.
-
-### Reference example
-
-`example_submission/` is a complete submission in the expected format, with placeholder patches:
-
-```text
-example_submission/
-├── submission.csv            50 lines: one header plus 49 tasks
-└── diffs/                    49 unified diffs, one per task
-```
-
-```bash
-head -3 example_submission/submission.csv
-cat example_submission/diffs/go-001.diff
-```
-
-Each patch creates a `STUB_<task-id>.txt` file: it demonstrates the format and resolves nothing. Your own archive has the same shape, with the placeholders replaced by the diffs produced by the agent.
-
-### Pre-flight check
-
-```bash
-unzip -l sample_submission.zip
-unzip -p sample_submission.zip submission.csv
-```
-
-A full run gives 50 CSV lines: one header plus one diff for each of the 49 tasks. If a diff is empty, the agent most likely worked outside `/testbed` or never staged its new files.
-
-### Upload
-
-Upload `sample_submission.zip`, and optionally `sample_trajectory.zip`, through the platform.
-
-> [!IMPORTANT]
-> Keep local copies of both archives. If the upload fails or the platform hits a technical problem, we will ask you to resend them, and there is no other way to restore the result.
-
----
-
-## Local scoring
-
-`scripts/swemera.py` reads `verifier/parse_result.json` from every trial and compares the passed tests against `fail_to_pass` and `pass_to_pass` from `tasks/*/tests/config.json`, applying the same rule as the platform. When the parsed report is missing, it falls back to the Harbor reward in the trial `result.json`. It reports pass@1 over the single attempt of each task; if a task happens to have several trials in the job, only the first one counts.
-
-Harbor also writes a reward mean into `jobs/<timestamp>/result.json`, but it divides by the trials that actually ran. The leaderboard divides by all 49 tasks, which is what this script reports — hence the separate `evaluated` and `patches` counters.
-
-```bash
-python3 scripts/swemera.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --score-only
-python3 scripts/swemera.py --jobs-dir jobs/run-001/2026-08-21__14-44-53 --score-only --list-failed --json metrics.json
-```
-
-```text
-  pass@1 34/49  69.39%   evaluated 49/49   patches 49/49
-```
-
-| Row or flag | Meaning |
-| :-- | :-- |
-| `pass@1` | the leaderboard metric: share of the 49 tasks resolved on their single attempt |
-| `evaluated` | how many tasks actually reached the verifier |
-| `patches` | how many tasks produced a diff; anything below `evaluated` means the collect hook failed |
-| gap between `pass@1` and `evaluated` | part of the run died on a timeout or an infrastructure error and should be repeated |
-| `--list-failed` | prints the unresolved task ids |
-| `--json` | writes a machine-readable report for comparing runs |
-
----
-
-## Rules and penalties
-
-> [!WARNING]
-> **Submissions matching the gold solution will be penalised.** The gold patches under `tasks/*/solution/` exist so that the oracle agent can validate the harness. Copying `fix.patch`, rewording it cosmetically or reusing it in any other way is treated as a violation and may invalidate the result.
+> **Warning:** Submissions matching the gold solution will be penalised. Gold patches under `tasks/*/solution/` exist only so the oracle can validate the harness. Copying `fix.patch`, cosmetically rewording it, or otherwise reusing it is a violation and may invalidate the result.
 
 In addition:
 
-- submit only patches produced by the agent during the run;
-- do not modify `tasks/*/tests/` and do not tailor code to test names or structure;
-- do not disable, delete or rewrite tests inside `/testbed`;
-- retain the trajectories — without them there is no way to confirm that a patch came from an agent.
+- Submit only patches produced by the agent during the run.
+- Give every task one attempt.
+- Do not modify `tasks/*/tests/` or tailor code to test names or structure.
+- Do not disable, delete, or rewrite tests inside `/testbed`.
+- Retain trajectories so the origin of each patch can be verified.
 
----
-
-## Troubleshooting
-
-| Symptom | Cause and fix |
-| :-- | :-- |
-| `harbor --version` prints something other than `0.22.0` | the environment was not installed from `requirements.txt`; recreate the virtualenv |
-| `no match for platform in manifest` | the Docker host cannot run `linux/amd64`; enable emulation or use an x86_64 machine |
-| `range of CPUs is from 0.01 to N` | Docker has fewer cores available than the task requests; give Docker at least 2 cores per concurrent task |
-| the oracle run does not end with reward `1` | environment or Docker issue: check that the daemon is running and that disk space is sufficient |
-| `swemera.py` refuses to pack | some tasks produced no diff; the listed trials' `trial.log` shows why the collect hook failed |
-| a diff comes out empty | the agent changed nothing, or it worked outside `/testbed` |
-| `swemera.py` sees no trials | `--jobs-dir` must point at the timestamped job directory that contains the `<task-id>__<suffix>` trials |
-| `pass@1` is far below expectation | `pass_to_pass` regressions; inspect the verifier logs under `jobs/` |
-| tasks fail with timeouts | lower `-n`, the machine lacks CPU or memory |
-| large gap between `evaluated` and 49 | some tasks never reached the verifier; rerun them separately |
-| `submission.csv` has fewer than 50 lines | tasks are missing from the archive and will be scored as unresolved |
+</details>
