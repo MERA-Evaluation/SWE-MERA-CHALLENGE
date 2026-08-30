@@ -68,7 +68,7 @@ Store provider credentials in `.env`, then select the model and agent using the 
 cp configs/.env.example .env
 vim .env
 ```
-
+<details><summary>Troubleshooting</summary>
 <details>
 <summary>Credential troubleshooting</summary>
 
@@ -146,6 +146,7 @@ The same OpenAI variables work with a corporate gateway or an Azure-style proxy;
 > **Note:** Verification times vary widely. A Go task can finish in under a minute, while a large PHP task runs tens of thousands of `pass_to_pass` tests and can take tens of minutes on two cores. On arm64, amd64 emulation is several times slower and can push the largest PHP tasks into the 3600 s verifier timeout. Prefer native `x86_64` hardware for a scoring sweep.
 
 </details>
+</details>
 
 ## Run
 
@@ -212,6 +213,7 @@ uv run --python .venv/bin/python -- harbor run \
 uv run --python .venv/bin/python -- harbor run \
   --path tasks \
   --agent openhands \
+  --agent-kwarg version=1.6.0 \
   --model openrouter/qwen/qwen3.7-flash \
   --env-file .env \
   --jobs-dir jobs/openhands \
