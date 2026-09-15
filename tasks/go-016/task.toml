@@ -1,4 +1,4 @@
-schema_version = "1.0"
+schema_version = "1.4"
 
 [task]
 name = "swemera/go-016"
@@ -18,10 +18,18 @@ network_mode = "public"
 timeout_sec = 3600
 
 [agent]
-network_mode = "public"
+network_mode = "allowlist"
+allowed_hosts = [
+    "openrouter.ai",
+    "host.docker.internal",
+    "registry-1.docker.io",
+    "auth.docker.io",
+    "production.cloudflare.docker.com",
+]
 timeout_sec = 3600
 
 [environment]
+network_mode = "public"
 build_timeout_sec = 3600
 cpus = 2
 memory_mb = 4096

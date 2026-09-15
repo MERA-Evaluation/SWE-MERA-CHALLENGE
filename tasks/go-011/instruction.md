@@ -99,11 +99,6 @@ The writer should handle NULL-type columns by writing them as all-null values (d
 We currently work around this by patching the Thrift-encoded parquet footer in-memory before opening the writer: we strip the `LogicalType.Unknown` annotation from NULL-type `SchemaElement` entries and set the physical type to `INT32`. This forces parquet-go to treat these columns as regular `INT32` columns (with all values being `null`), which the writer can handle.
 
 This workaround is effective but not ideal — it modifies the schema semantics and requires manual Thrift footer manipulation.
-
-## Repository Information
-- **Repository**: parquet-go/parquet-go
-- **Pull Request**: #519
-- **Base Commit**: `b1bbe023c3e577e365252c284f5e2f47918a9edc`
 </issue_description>
 
 Can you help me implement the necessary changes to the repository so that the requirements specified in the <issue_description> are met?
@@ -152,7 +147,7 @@ Phase 7. VERIFICATION: Test your implementation thoroughly.
    7.2 Add edge cases to your test script to ensure comprehensive coverage.
    7.3 Run existing tests related to the modified code to ensure you haven't broken anything.
 
-Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit b1bbe023c3e577e365252c284f5e2f47918a9edc.
+Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit.
    8.1 Ensure you've fully addressed all requirements.
    8.2 Run any tests in the repository related to:
       8.2.1 The issue you are fixing

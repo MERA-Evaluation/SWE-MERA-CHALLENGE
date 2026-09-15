@@ -70,11 +70,6 @@ func main() {
 ### Probable root cause
 
 I believe this issue is caused by this `if` statement in the resolution logic: upstream discussion (permalink copied from main at the time of report). `checkEnumSymbols` method only checks for names of the symbols, but not positions, so if all names are compatible, but positions are not, the reader schema is incorrectly returned as-is. A possible solution might be setting the `encodedSymbols` field when order is mismatched, instead of simply returning the reader schema.
-
-## Repository Information
-- **Repository**: hamba/avro
-- **Pull Request**: #557
-- **Base Commit**: `07bcb49a2944df3914d0cc6ee6ddd3ecbd1a7c02`
 </issue_description>
 
 Can you help me implement the necessary changes to the repository so that the requirements specified in the <issue_description> are met?
@@ -123,7 +118,7 @@ Phase 7. VERIFICATION: Test your implementation thoroughly.
    7.2 Add edge cases to your test script to ensure comprehensive coverage.
    7.3 Run existing tests related to the modified code to ensure you haven't broken anything.
 
-Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit 07bcb49a2944df3914d0cc6ee6ddd3ecbd1a7c02.
+Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit.
    8.1 Ensure you've fully addressed all requirements.
    8.2 Run any tests in the repository related to:
       8.2.1 The issue you are fixing
