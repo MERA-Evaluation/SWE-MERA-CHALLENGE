@@ -15,7 +15,7 @@ base_commit = "b1bbe023c3e577e365252c284f5e2f47918a9edc"
 
 [verifier]
 network_mode = "public"
-timeout_sec = 3600
+timeout_sec = 300
 
 [agent]
 network_mode = "allowlist"

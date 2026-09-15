@@ -30,7 +30,7 @@ allowed_hosts = [
     "auth.docker.io",
     "production.cloudflare.docker.com",
 ]
-timeout_sec = 3600
+timeout_sec = 200
 
 [verifier]
 network_mode = "public"
