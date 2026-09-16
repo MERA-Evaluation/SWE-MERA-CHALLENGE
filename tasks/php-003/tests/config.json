@@ -225,7 +225,6 @@
     "PhpCsFixer.Tests.Console.Command.WorkerCommandTest::testNotDefiningConstructor",
     "PhpCsFixer.Tests.Console.Command.WorkerCommandTest::testMissingIdentifierCausesFailure",
     "PhpCsFixer.Tests.Console.Command.WorkerCommandTest::testMissingPortCausesFailure",
-    "PhpCsFixer.Tests.Console.Command.WorkerCommandTest::testWorkerCantConnectToServerWhenExecutedDirectly",
     "PhpCsFixer.Tests.Console.Command.WorkerCommandTest::testWorkerCommunicatesWithTheServer",
     "PhpCsFixer.Tests.Console.ConfigurationResolverTest::testNotDefiningConstructor",
     "PhpCsFixer.Tests.Console.ConfigurationResolverTest::testResolveParallelConfig",
