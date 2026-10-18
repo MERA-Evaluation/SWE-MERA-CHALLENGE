@@ -706,7 +706,6 @@
     "Tests.Unit.Helpers.NetworkTest::rejectsPrivateIps with data set \"loopback IPv6\"",
     "Tests.Unit.Helpers.NetworkTest::rejectsPrivateIps with data set \"private 10.x\"",
     "Tests.Unit.Helpers.NetworkTest::rejectsPrivateIps with data set \"private 192.168.x\"",
-    "Tests.Unit.Helpers.NetworkTest::rejectsUnresolvableHost",
     "Tests.Unit.Http.Integrations.Spotify.SpotifyClientTest::accessTokenIsRetrievedFromCacheWhenApplicable",
     "Tests.Unit.Http.Integrations.Spotify.SpotifyClientTest::accessTokenIsSetUponInitialization",
     "Tests.Unit.Http.Integrations.Spotify.SpotifyClientTest::callForwarding",
