@@ -1,0 +1,11 @@
+{
+  "test_patch_applied": true,
+  "test_patch_rc": 0,
+  "command_build": "go mod download",
+  "command_build_rc": 0,
+  "command_test": "gotestsum --junitfile /testbed/junit.xml -- ./... -v && cat /testbed/junit.xml 2>/dev/null || echo '<no junit.xml>'",
+  "command_test_rc": 0,
+  "junit_found": true,
+  "parse_rc": 1,
+  "reward": 0
+}

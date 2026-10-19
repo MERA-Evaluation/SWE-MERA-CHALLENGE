@@ -1,0 +1,15 @@
+{
+    "jobs_dir": "jobs/gpt-5.6-luna",
+    "n_concurrent_trials": 2,
+    "agents": [
+        {
+            "name": "mini-swe-agent",
+            "model_name": "openrouter/openai/gpt-5.6-luna"
+        }
+    ],
+    "datasets": [
+        {
+            "path": "tasks"
+        }
+    ]
+}

@@ -1,0 +1,117 @@
+{
+    "id": "ead73752-3f1f-4166-83b0-848a19ffa6f2",
+    "task_name": "swemera/go-002",
+    "trial_name": "go-002__yLUuYe3",
+    "trial_uri": "file:///home/valentin/SWE-MERA-CHALLENGE/jobs/gpt-5.6-luna/2026-09-01__22-02-47/go-002__yLUuYe3",
+    "task_id": {
+        "path": "tasks/go-002"
+    },
+    "source": "tasks",
+    "task_checksum": "9299bb379d5bdff03729a2b042e3637bfb88cb99fb992872fc7de51f8fbb97d9",
+    "config": {
+        "task": {
+            "path": "tasks/go-002",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "go-002__yLUuYe3",
+        "trials_dir": "jobs/gpt-5.6-luna/2026-09-01__22-02-47",
+        "install_only": false,
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "mini-swe-agent",
+            "import_path": null,
+            "model_name": "openrouter/openai/gpt-5.6-luna",
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {},
+            "mcp_servers": []
+        },
+        "user_agent": null,
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "extra_instructions": [],
+        "job_id": "abe31f4e-0e04-42e6-beda-7f01cd8bec28",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "mini-swe-agent",
+        "version": "2.4.6",
+        "model_info": {
+            "name": "openai/gpt-5.6-luna",
+            "provider": "openrouter"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 73543,
+        "n_cache_tokens": 61867,
+        "n_output_tokens": 2480,
+        "cost_usd": 0.0,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 1.0
+        }
+    },
+    "verifier_environment_mode": "shared",
+    "exception_info": null,
+    "started_at": "2026-09-01T22:31:52.817310Z",
+    "finished_at": "2026-09-01T22:33:31.095261Z",
+    "environment_setup": {
+        "started_at": "2026-09-01T22:31:52.821360Z",
+        "finished_at": "2026-09-01T22:31:56.749389Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-09-01T22:31:56.749409Z",
+        "finished_at": "2026-09-01T22:32:19.337739Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-09-01T22:32:19.337851Z",
+        "finished_at": "2026-09-01T22:33:14.745197Z"
+    },
+    "verifier": {
+        "started_at": "2026-09-01T22:33:15.190800Z",
+        "finished_at": "2026-09-01T22:33:19.356202Z"
+    },
+    "step_results": null
+}

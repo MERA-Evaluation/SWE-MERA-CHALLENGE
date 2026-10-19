@@ -1,0 +1,1304 @@
+This is mini-swe-agent version 2.4.6.
+Check the v2 migration guide at https://klieret.short.gy/mini-v2-migration
+Loading global config from '/root/.config/mini-swe-agent/.env'
+Warning: Input is not a terminal (fd=0).
+Building agent config from specs: ['mini', 
+'model.model_kwargs.extra_headers.X-Session-ID=go-001__LYqFdQz__agent']
+
+System:
+You are a helpful assistant that can interact with a computer.
+
+User:
+Please solve this issue: <uploaded_files>
+/testbed
+</uploaded_files>
+
+I've uploaded a go code repository in the directory /testbed. Consider the 
+following issue description:
+
+<issue_description>
+# panic since v1.9.0 with nil string pointer
+
+with this code:
+```go
+func TestNilStringPointer(t *testing.T) {
+        var s *string
+        t.Log(cast.ToStringE(s))
+}
+```
+
+got a recursive deadlock:
+```
+runtime: goroutine stack exceeds 1000000000-byte limit
+runtime: sp=0xc020602398 stack=[0xc020602000, 0xc040602000]
+fatal error: stack overflow
+
+goroutine 20 gp=0xc0005828c0 m=0 mp=0x122e5e0 [running]:
+reflect.valueInterface({0xa84060?, 0x0?, 0x16?}, 0x1?)
+        go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.3.linux-amd64/src/reflect/
+value.go:1487 +0x115 fp=0xc0206023a8 sp=0xc0206023a0 pc=0x4f0a15
+reflect.Value.Interface(...)
+        go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.3.linux-amd64/src/reflect/
+value.go:1484
+github.com/spf13/cast.indirect({0xa84060, 0x0})
+        go/pkg/mod/github.com/spf13/cast@v1.9.0/indirect.go:31 +0x11a 
+fp=0xc0206023f8 sp=0xc0206023a8 pc=0x78887a
+github.com/spf13/cast.ToStringE({0xa84060, 0x0})
+        go/pkg/mod/github.com/spf13/cast@v1.9.0/basic.go:121 +0x49f 
+fp=0xc020602480 sp=0xc0206023f8 pc=0x78865f
+github.com/spf13/cast.ToStringE({0xa84060, 0x0})
+        go/pkg/mod/github.com/spf13/cast@v1.9.0/basic.go:122 +0x53e 
+fp=0xc020602508 sp=0xc020602480 pc=0x7886fe
+github.com/spf13/cast.ToStringE({0xa84060, 0x0})
+        go/pkg/mod/github.com/spf13/cast@v1.9.0/basic.go:122 +0x53e 
+fp=0xc020602590 sp=0xc020602508 pc=0x7886fe
+```
+
+want empty string
+
+## Repository Information
+- **Repository**: spf13/cast
+- **Pull Request**: #273
+- **Base Commit**: `a79ffed9a6a3da62453e90f35784fc2b8d1b390b`
+</issue_description>
+
+Can you help me implement the necessary changes to the repository so that the 
+requirements specified in the <issue_description> are met?
+I've already taken care of all changes to any of the test files described in the
+<issue_description>. This means you DON'T have to modify the testing logic or 
+any of the tests in any way!
+Also the development go environment is already set up for you (i.e., all 
+dependencies already installed), so you don't need to install other packages.
+Your task is to make the minimal changes to non-test files in the /testbed 
+directory to ensure the <issue_description> is satisfied.
+
+Follow these phases to resolve the issue:
+
+Phase 1. READING: read the problem and reword it in clearer terms
+   1.1 If there are code or config snippets. Express in words any best practices
+or conventions in them.
+   1.2 Highlight message errors, method names, variables, file names, stack 
+traces, and technical details.
+   1.3 Explain the problem in clear terms.
+   1.4 Enumerate the steps to reproduce the problem.
+   1.5 Highlight any best practices to take into account when testing and fixing
+the issue.
+
+Phase 2. RUNNING: install and run the tests on the repository
+   2.1 Follow the readme.
+   2.2 Install the environment and anything needed.
+   2.3 Iterate and figure out how to run the tests.
+
+Phase 3. EXPLORATION: find the files that are related to the problem and 
+possible solutions
+   3.1 Use `grep` to search for relevant methods, classes, keywords and error 
+messages.
+   3.2 Identify all files related to the problem statement.
+   3.3 Propose the methods and files to fix the issue and explain why.
+   3.4 From the possible file locations, select the most likely location to fix 
+the issue.
+
+Phase 4. TEST CREATION: before implementing any fix, create a script to 
+reproduce and verify the issue
+   4.1 Look at existing test files in the repository to understand the test 
+format/structure.
+   4.2 Create a minimal reproduction script that reproduces the located issue.
+   4.3 Run the reproduction script to confirm you are reproducing the issue.
+   4.4 Adjust the reproduction script as necessary.
+
+Phase 5. FIX ANALYSIS: state clearly the problem and how to fix it
+   5.1 State clearly what the problem is.
+   5.2 State clearly where the problem is located.
+   5.3 State clearly how the test reproduces the issue.
+   5.4 State clearly the best practices to take into account in the fix.
+   5.5 State clearly how to fix the problem.
+
+Phase 6. FIX IMPLEMENTATION: Edit the source code to implement your chosen 
+solution.
+   6.1 Make minimal, focused changes to fix the issue.
+
+Phase 7. VERIFICATION: Test your implementation thoroughly.
+   7.1 Run your reproduction script to verify the fix works.
+   7.2 Add edge cases to your test script to ensure comprehensive coverage.
+   7.3 Run existing tests related to the modified code to ensure you haven't 
+broken anything.
+
+Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare 
+your changes with the base commit a79ffed9a6a3da62453e90f35784fc2b8d1b390b.
+   8.1 Ensure you've fully addressed all requirements.
+   8.2 Run any tests in the repository related to:
+      8.2.1 The issue you are fixing
+      8.2.2 The files you modified
+      8.2.3 The functions you changed
+   8.3 If any tests fail, revise your implementation until all tests pass.
+
+Be thorough in your exploration, testing, and reasoning. It's fine if your 
+thinking process is lengthy - quality and completeness are more important than 
+brevity.
+
+IMPORTANT CONSTRAINTS:
+- ONLY modify files within the /testbed directory
+- DO NOT navigate outside this directory (no `cd ..` or absolute paths to other 
+locations)
+- DO NOT create, modify, or delete any files outside the repository
+- All your changes must be trackable by `git diff` within the repository
+- If you need to create test files, create them inside the repository directory
+
+
+You can execute bash commands and edit files to implement the necessary changes.
+
+## Recommended Workflow
+
+This workflow should be done step-by-step so that you can iterate on your 
+changes and any possible problems.
+
+1. Analyze the codebase by finding and reading relevant files
+2. Create a script to reproduce the issue
+3. Edit the source code to resolve the issue
+4. Verify your fix works by running your script again
+5. Test edge cases to ensure your fix is robust
+6. Submit your changes and finish your work by issuing the following command: 
+`echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`.
+   Do not combine it with any other command. <important>After this command, you 
+cannot continue working on this task.</important>
+
+## Command Execution Rules
+
+You are operating in an environment where
+
+1. You issue at least one command
+2. The system executes the command(s) in a subshell
+3. You see the result(s)
+4. You write your next command(s)
+
+Each response should include:
+
+1. **Reasoning text** where you explain your analysis and plan
+2. At least one tool call with your command
+
+**CRITICAL REQUIREMENTS:**
+
+- Your response SHOULD include reasoning text explaining what you're doing
+- Your response MUST include AT LEAST ONE bash tool call
+- Directory or environment variable changes are not persistent. Every action is 
+executed in a new subshell.
+- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd 
+/path/to/working/dir && ...` or write/load environment variables from files
+- Submit your changes and finish your work by issuing the following command: 
+`echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`.
+  Do not combine it with any other command. <important>After this command, you 
+cannot continue working on this task.</important>
+
+Example of a CORRECT response:
+<example_response>
+I need to understand the structure of the repository first. Let me check what 
+files are in the current directory to get a better understanding of the 
+codebase.
+
+[Makes bash tool call with {"command": "ls -la"} as arguments]
+</example_response>
+
+<system_information>
+Linux 6.8.0-137-generic #137-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 17 20:28:23 UTC 
+2026 x86_64
+</system_information>
+
+## Useful command examples
+
+### Create a new file:
+
+```bash
+cat <<'EOF' > newfile.py
+import numpy as np
+hello = "world"
+print(hello)
+EOF
+```
+
+### Edit files with sed:```bash
+# Replace all occurrences
+sed -i 's/old_string/new_string/g' filename.py
+
+# Replace only first occurrence
+sed -i 's/old_string/new_string/' filename.py
+
+# Replace first occurrence on line 1
+sed -i '1s/old_string/new_string/' filename.py
+
+# Replace all occurrences in lines 1-10
+sed -i '1,10s/old_string/new_string/g' filename.py
+```
+
+### View file content:
+
+```bash
+# View specific lines with numbers
+nl -ba filename.py | sed -n '10,20p'
+```
+
+### Any other command you want to run
+
+```bash
+anything
+```
+────────────────────────────────────────────────────────────────────────────────
+
+mini-swe-agent (step 1, $0.00):
+I’ll first inspect the repository structure, current branch/status, and the 
+string-conversion implementation. The issue appears to be a nil `*string` being 
+unwrapped by reflection and then recursively passed back into `ToStringE`; I’ll 
+confirm the exact control flow before making the smallest non-test change.
+
+```
+cd /testbed && printf '%s\n' '--- status ---' && git status --short && printf 
+'%s\n' '--- files ---' && find . -maxdepth 2 -type f | sort && printf '%s\n' 
+'--- relevant symbols ---' && grep -RIn "func ToStringE\|func 
+indirect\|ToString" --include='*.go' . | head -80
+```
+
+Tool:
+<returncode>
+0
+<output>
+--- status ---
+--- files ---
+./.editorconfig
+./.git/COMMIT_EDITMSG
+./.git/HEAD
+./.git/config
+./.git/description
+./.git/index
+./.git/packed-refs
+./.gitignore
+./.golangci.yaml
+./LICENSE
+./Makefile
+./README.md
+./alias.go
+./alias_test.go
+./basic.go
+./basic_test.go
+./cast.go
+./cast_test.go
+./generator/go.mod
+./generator/go.sum
+./generator/main.go
+./go.mod
+./go.sum
+./indirect.go
+./indirect_test.go
+./internal/time.go
+./internal/timeformattype_string.go
+./map.go
+./map_test.go
+./number.go
+./number_internal_test.go
+./number_test.go
+./slice.go
+./slice_test.go
+./time.go
+./time_test.go
+./zz_generated.go
+--- relevant symbols ---
+./number_test.go:198:           {cast.ToString(max), max, false},
+./cast_test.go:198:                     cast.ToString(123456789)
+./cast_test.go:222:                     cast.ToStringSlice([]int{123456789, 
+123456789, 123456789, 123456789})
+./indirect.go:16:func indirect(i any) (any, bool) {
+./zz_generated.go:13:// ToString casts any value to a(n) string type.
+./zz_generated.go:14:func ToString(i any) string {
+./zz_generated.go:15:   v, _ := ToStringE(i)
+./zz_generated.go:109:// ToStringMapString casts any value to a(n) 
+map[string]string type.
+./zz_generated.go:110:func ToStringMapString(i any) map[string]string {
+./zz_generated.go:111:  v, _ := ToStringMapStringE(i)
+./zz_generated.go:115:// ToStringMapStringSlice casts any value to a(n) 
+map[string][]string type.
+./zz_generated.go:116:func ToStringMapStringSlice(i any) map[string][]string {
+./zz_generated.go:117:  v, _ := ToStringMapStringSliceE(i)
+./zz_generated.go:121:// ToStringMapBool casts any value to a(n) map[string]bool
+type.
+./zz_generated.go:122:func ToStringMapBool(i any) map[string]bool {
+./zz_generated.go:123:  v, _ := ToStringMapBoolE(i)
+./zz_generated.go:127:// ToStringMapInt casts any value to a(n) map[string]int 
+type.
+./zz_generated.go:128:func ToStringMapInt(i any) map[string]int {
+./zz_generated.go:129:  v, _ := ToStringMapIntE(i)
+./zz_generated.go:133:// ToStringMapInt64 casts any value to a(n) 
+map[string]int64 type.
+./zz_generated.go:134:func ToStringMapInt64(i any) map[string]int64 {
+./zz_generated.go:135:  v, _ := ToStringMapInt64E(i)
+./zz_generated.go:139:// ToStringMap casts any value to a(n) map[string]any 
+type.
+./zz_generated.go:140:func ToStringMap(i any) map[string]any {
+./zz_generated.go:141:  v, _ := ToStringMapE(i)
+./zz_generated.go:157:// ToStringSlice casts any value to a(n) []string type.
+./zz_generated.go:158:func ToStringSlice(i any) []string {
+./zz_generated.go:159:  v, _ := ToStringSliceE(i)
+./basic_test.go:143:    runTests(t, testCases, cast.ToString, cast.ToStringE)
+./cast.go:29:           v, err = ToStringE(i)
+./basic.go:69:// ToStringE casts any value to a string type.
+./basic.go:70:func ToStringE(i any) (string, error) {
+./basic.go:122:                 return ToStringE(i)
+./basic.go:126:                 return ToStringE(i)
+./generator/main.go:17: {"ToString", String()},
+./generator/main.go:33: {"ToStringMapString", Map(String()).String()},
+./generator/main.go:34: {"ToStringMapStringSlice", 
+Map(String()).Index().String()},
+./generator/main.go:35: {"ToStringMapBool", Map(String()).Bool()},
+./generator/main.go:36: {"ToStringMapInt", Map(String()).Int()},
+./generator/main.go:37: {"ToStringMapInt64", Map(String()).Int64()},
+./generator/main.go:38: {"ToStringMap", Map(String()).Any()},
+./generator/main.go:41: {"ToStringSlice", Index().String()},
+./slice.go:81:// ToStringSliceE casts any value to a []string type.
+./slice.go:82:func ToStringSliceE(i any) ([]string, error) {
+./slice.go:97:          str, err := ToStringE(v)
+./slice_test.go:267:    runSliceTests(t, testCases, cast.ToStringSlice, 
+cast.ToStringSliceE)
+./map.go:60:    return toMapE(i, ToString, fn)
+./map.go:63:// ToStringMapStringE casts any value to a map[string]string type.
+./map.go:64:func ToStringMapStringE(i any) (map[string]string, error) {
+./map.go:65:    return toStringMapE(i, ToString)
+./map.go:68:// ToStringMapStringSliceE casts any value to a map[string][]string 
+type.
+./map.go:69:func ToStringMapStringSliceE(i any) (map[string][]string, error) {
+./map.go:77:                    m[ToString(k)] = ToStringSlice(val)
+./map.go:82:                    m[ToString(k)] = []string{val}
+./map.go:88:                            m[ToString(k)] = ToStringSlice(vt)
+./map.go:90:                            m[ToString(k)] = vt
+./map.go:92:                            m[ToString(k)] = []string{ToString(val)}
+./map.go:98:                    m[ToString(k)] = ToStringSlice(val)
+./map.go:103:                   m[ToString(k)] = ToStringSlice(val)
+./map.go:108:                   m[ToString(k)] = ToStringSlice(val)
+./map.go:113:                   key, err := ToStringE(k)
+./map.go:117:                   value, err := ToStringSliceE(val)
+./map.go:137:// ToStringMapBoolE casts any value to a map[string]bool type.
+./map.go:138:func ToStringMapBoolE(i any) (map[string]bool, error) {
+./map.go:142:// ToStringMapE casts any value to a map[string]any type.
+./map.go:143:func ToStringMapE(i any) (map[string]any, error) {
+./map.go:169:                   m[ToString(k)] = val
+./map.go:176:                   m[ToString(k)] = fn(val)
+./map.go:209:// ToStringMapIntE casts any value to a map[string]int type.
+./map.go:210:func ToStringMapIntE(i any) (map[string]int, error) {
+./map.go:214:// ToStringMapInt64E casts any value to a map[string]int64 type.
+./map.go:215:func ToStringMapInt64E(i any) (map[string]int64, error) {
+./map_test.go:140:      // ToStringMapString inputs/outputs
+./map_test.go:146:      // ToStringMapStringSlice inputs/outputs
+./map_test.go:187:              {map[any]any{Key{"foo"}: "bar"}, nil, true}, // 
+ToStringE(Key{"foo"}) should fail
+./map_test.go:192:      runMapTests(t, testCases, cast.ToStringMapStringSlice, 
+cast.ToStringMapStringSliceE)
+./map_test.go:208:      runMapTests(t, testCases, cast.ToStringMap, 
+cast.ToStringMapE)
+./map_test.go:224:      runMapTests(t, testCases, cast.ToStringMapBool, 
+cast.ToStringMapBoolE)
+./map_test.go:243:      runMapTests(t, testCases, cast.ToStringMapInt, 
+cast.ToStringMapIntE)
+./map_test.go:263:      runMapTests(t, testCases, cast.ToStringMapInt64, 
+cast.ToStringMapInt64E)
+
+────────────────────────────────────────────────────────────────────────────────
+
+mini-swe-agent (step 2, $0.00):
+The repository is clean, and the relevant path is confined to `basic.go` plus 
+the reflection helper `indirect.go`. I’ll now read those implementations and 
+nearby tests, then run the existing suite and a temporary in-repository 
+reproduction without changing test files.
+
+```
+cd /testbed && nl -ba basic.go | sed -n '1,155p' && printf '%s\n' '--- 
+indirect.go ---' && nl -ba indirect.go && printf '%s\n' '--- indirect tests ---'
+&& nl -ba indirect_test.go | sed -n '1,240p'
+```
+
+```
+cd /testbed && sed -n '1,180p' README.md && printf '%s\n' '--- module ---' && 
+cat go.mod && printf '%s\n' '--- baseline tests ---' && go test ./...
+```
+
+```
+cd /testbed && grep -RIn "indirect(" --include='*.go' . && grep -RIn 
+"reflect\.\|Ptr\|nil" --include='*.go' basic.go indirect.go *_test.go | head 
+-120
+```
+
+Tool:
+<returncode>
+0
+<output>
+     1  // Copyright © 2014 Steve Francia <spf@spf13.com>.
+     2  //
+     3  // Use of this source code is governed by an MIT-style
+     4  // license that can be found in the LICENSE file.
+     5  
+     6  package cast
+     7  
+     8  import (
+     9          "encoding/json"
+    10          "fmt"
+    11          "html/template"
+    12          "strconv"
+    13          "time"
+    14  )
+    15  
+    16  // ToBoolE casts any value to a bool type.
+    17  func ToBoolE(i any) (bool, error) {
+    18          i, _ = indirect(i)
+    19  
+    20          switch b := i.(type) {
+    21          case bool:
+    22                  return b, nil
+    23          case nil:
+    24                  return false, nil
+    25          case int:
+    26                  return b != 0, nil
+    27          case int8:
+    28                  return b != 0, nil
+    29          case int16:
+    30                  return b != 0, nil
+    31          case int32:
+    32                  return b != 0, nil
+    33          case int64:
+    34                  return b != 0, nil
+    35          case uint:
+    36                  return b != 0, nil
+    37          case uint8:
+    38                  return b != 0, nil
+    39          case uint16:
+    40                  return b != 0, nil
+    41          case uint32:
+    42                  return b != 0, nil
+    43          case uint64:
+    44                  return b != 0, nil
+    45          case float32:
+    46                  return b != 0, nil
+    47          case float64:
+    48                  return b != 0, nil
+    49          case time.Duration:
+    50                  return b != 0, nil
+    51          case string:
+    52                  return strconv.ParseBool(b)
+    53          case json.Number:
+    54                  v, err := ToInt64E(b)
+    55                  if err == nil {
+    56                          return v != 0, nil
+    57                  }
+    58  
+    59                  return false, fmt.Errorf(errorMsg, i, i, false)
+    60          default:
+    61                  if i, ok := resolveAlias(i); ok {
+    62                          return ToBoolE(i)
+    63                  }
+    64  
+    65                  return false, fmt.Errorf(errorMsg, i, i, false)
+    66          }
+    67  }
+    68  
+    69  // ToStringE casts any value to a string type.
+    70  func ToStringE(i any) (string, error) {
+    71          switch s := i.(type) {
+    72          case string:
+    73                  return s, nil
+    74          case bool:
+    75                  return strconv.FormatBool(s), nil
+    76          case float64:
+    77                  return strconv.FormatFloat(s, 'f', -1, 64), nil
+    78          case float32:
+    79                  return strconv.FormatFloat(float64(s), 'f', -1, 32), nil
+    80          case int:
+    81                  return strconv.Itoa(s), nil
+    82          case int8:
+    83                  return strconv.FormatInt(int64(s), 10), nil
+    84          case int16:
+    85                  return strconv.FormatInt(int64(s), 10), nil
+    86          case int32:
+    87                  return strconv.FormatInt(int64(s), 10), nil
+    88          case int64:
+    89                  return strconv.FormatInt(s, 10), nil
+    90          case uint:
+    91                  return strconv.FormatUint(uint64(s), 10), nil
+    92          case uint8:
+    93                  return strconv.FormatUint(uint64(s), 10), nil
+    94          case uint16:
+    95                  return strconv.FormatUint(uint64(s), 10), nil
+    96          case uint32:
+    97                  return strconv.FormatUint(uint64(s), 10), nil
+    98          case uint64:
+    99                  return strconv.FormatUint(s, 10), nil
+   100          case json.Number:
+   101                  return s.String(), nil
+   102          case []byte:
+   103                  return string(s), nil
+   104          case template.HTML:
+   105                  return string(s), nil
+   106          case template.URL:
+   107                  return string(s), nil
+   108          case template.JS:
+   109                  return string(s), nil
+   110          case template.CSS:
+   111                  return string(s), nil
+   112          case template.HTMLAttr:
+   113                  return string(s), nil
+   114          case nil:
+   115                  return "", nil
+   116          case fmt.Stringer:
+   117                  return s.String(), nil
+   118          case error:
+   119                  return s.Error(), nil
+   120          default:
+   121                  if i, ok := indirect(i); ok {
+   122                          return ToStringE(i)
+   123                  }
+   124  
+   125                  if i, ok := resolveAlias(i); ok {
+   126                          return ToStringE(i)
+   127                  }
+   128  
+   129                  return "", fmt.Errorf(errorMsg, i, i, "")
+   130          }
+   131  }
+--- indirect.go ---
+     1  // Copyright © 2014 Steve Francia <spf@spf13.com>.
+     2  //
+     3  // Use of this source code is governed by an MIT-style
+     4  // license that can be found in the LICENSE file.
+     5  
+     6  package cast
+     7  
+     8  import (
+     9          "reflect"
+    10  )
+    11  
+    12  // From html/template/content.go
+    13  // Copyright 2011 The Go Authors. All rights reserved.
+    14  // indirect returns the value, after dereferencing as many times
+    15  // as necessary to reach the base type (or nil).
+    16  func indirect(i any) (any, bool) {
+    17          if i == nil {
+    18                  return nil, false
+    19          }
+    20  
+    21          if t := reflect.TypeOf(i); t.Kind() != reflect.Ptr {
+    22                  // Avoid creating a reflect.Value if it's not a pointer.
+    23                  return i, false
+    24          }
+    25  
+    26          v := reflect.ValueOf(i)
+    27          for v.Kind() == reflect.Ptr && !v.IsNil() {
+    28                  v = v.Elem()
+    29          }
+    30  
+    31          return v.Interface(), true
+    32  }
+--- indirect tests ---
+     1  // Copyright © 2014 Steve Francia <spf@spf13.com>.
+     2  //
+     3  // Use of this source code is governed by an MIT-style
+     4  // license that can be found in the LICENSE file.
+     5  
+     6  package cast
+     7  
+     8  import (
+     9          "testing"
+    10  
+    11          qt "github.com/frankban/quicktest"
+    12  )
+    13  
+    14  func TestIndirectPointers(t *testing.T) {
+    15          c := qt.New(t)
+    16  
+    17          x := 13
+    18          y := &x
+    19          z := &y
+    20  
+    21          c.Assert(ToInt(y), qt.Equals, 13)
+    22          c.Assert(ToInt(z), qt.Equals, 13)
+    23  }
+
+
+Tool:
+<returncode>
+0
+<output>
+# cast
+
+[![GitHub Workflow 
+Status](https://img.shields.io/github/actions/workflow/status/spf13/cast/ci.yaml
+?style=flat-square)](https://github.com/spf13/cast/actions/workflows/ci.yaml)
+[![go.dev 
+reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColo
+r=white&style=flat-square)](https://pkg.go.dev/mod/github.com/spf13/cast)
+![GitHub go.mod Go 
+version](https://img.shields.io/github/go-mod/go-version/spf13/cast?style=flat-s
+quare&color=61CFDD)
+[![OpenSSF 
+Scorecard](https://api.securityscorecards.dev/projects/github.com/spf13/cast/bad
+ge?style=flat-square)](https://deps.dev/go/github.com%252Fspf13%252Fcast)
+
+Easy and safe casting from one type to another in Go
+
+Don’t Panic! ... Cast
+
+## What is Cast?
+
+Cast is a library to convert between different go types in a consistent and easy
+way.
+
+Cast provides simple functions to easily convert a number to a string, an
+interface into a bool, etc. Cast does this intelligently when an obvious
+conversion is possible. It doesn’t make any attempts to guess what you meant,
+for example you can only convert a string to an int when it is a string
+representation of an int such as “8”. Cast was developed for use in
+[Hugo](https://gohugo.io), a website engine which uses YAML, TOML or JSON
+for meta data.
+
+## Why use Cast?
+
+When working with dynamic data in Go you often need to cast or convert the data
+from one type into another. Cast goes beyond just using type assertion (though
+it uses that when possible) to provide a very straightforward and convenient
+library.
+
+If you are working with interfaces to handle things like dynamic content
+you’ll need an easy way to convert an interface into a given type. This
+is the library for you.
+
+If you are taking in data from YAML, TOML or JSON or other formats which lack
+full types, then Cast is the library for you.
+
+## Usage
+
+Cast provides a handful of To_____ methods. These methods will always return
+the desired type. **If input is provided that will not convert to that type, the
+0 or nil value for that type will be returned**.
+
+Cast also provides identical methods To_____E. These return the same result as
+the To_____ methods, plus an additional error which tells you if it successfully
+converted. Using these methods you can tell the difference between when the
+input matched the zero value or when the conversion failed and the zero value
+was returned.
+
+The following examples are merely a sample of what is available. Please review
+the code for a complete set.
+
+### Example ‘ToString’:
+
+    cast.ToString("mayonegg")         // "mayonegg"
+    cast.ToString(8)                  // "8"
+    cast.ToString(8.31)               // "8.31"
+    cast.ToString([]byte("one time")) // "one time"
+    cast.ToString(nil)                // ""
+
+        var foo interface{} = "one more time"
+    cast.ToString(foo)                // "one more time"
+
+
+### Example ‘ToInt’:
+
+    cast.ToInt(8)                  // 8
+    cast.ToInt(8.31)               // 8
+    cast.ToInt("8")                // 8
+    cast.ToInt(true)               // 1
+    cast.ToInt(false)              // 0
+
+        var eight interface{} = 8
+    cast.ToInt(eight)              // 8
+    cast.ToInt(nil)                // 0
+
+## License
+
+The project is licensed under the [MIT License](LICENSE).
+--- module ---
+module github.com/spf13/cast
+
+go 1.21.0
+
+require github.com/frankban/quicktest v1.14.6
+
+require (
+        github.com/google/go-cmp v0.5.9 // indirect
+        github.com/kr/pretty v0.3.1 // indirect
+        github.com/kr/text v0.2.0 // indirect
+        github.com/rogpeppe/go-internal v1.9.0 // indirect
+)
+--- baseline tests ---
+?       github.com/spf13/cast/internal  [no test files]
+ok      github.com/spf13/cast   0.078s
+
+
+Tool:
+<returncode>
+0
+<output>
+./indirect.go:16:func indirect(i any) (any, bool) {
+./number.go:91: i, _ = indirect(i)
+./number.go:143:        i, _ = indirect(i)
+./number.go:195:        i, _ = indirect(i)
+./number.go:283:        i, _ = indirect(i)
+./basic.go:18:  i, _ = indirect(i)
+./basic.go:121:         if i, ok := indirect(i); ok {
+./slice.go:16:  i, _ = indirect(i)
+./slice.go:49:  i, _ = indirect(i)
+./time.go:27:   i, _ = indirect(i)
+./time.go:63:   i, _ = indirect(i)
+basic.go:22:            return b, nil
+basic.go:23:    case nil:
+basic.go:24:            return false, nil
+basic.go:26:            return b != 0, nil
+basic.go:28:            return b != 0, nil
+basic.go:30:            return b != 0, nil
+basic.go:32:            return b != 0, nil
+basic.go:34:            return b != 0, nil
+basic.go:36:            return b != 0, nil
+basic.go:38:            return b != 0, nil
+basic.go:40:            return b != 0, nil
+basic.go:42:            return b != 0, nil
+basic.go:44:            return b != 0, nil
+basic.go:46:            return b != 0, nil
+basic.go:48:            return b != 0, nil
+basic.go:50:            return b != 0, nil
+basic.go:55:            if err == nil {
+basic.go:56:                    return v != 0, nil
+basic.go:73:            return s, nil
+basic.go:75:            return strconv.FormatBool(s), nil
+basic.go:77:            return strconv.FormatFloat(s, 'f', -1, 64), nil
+basic.go:79:            return strconv.FormatFloat(float64(s), 'f', -1, 32), nil
+basic.go:81:            return strconv.Itoa(s), nil
+basic.go:83:            return strconv.FormatInt(int64(s), 10), nil
+basic.go:85:            return strconv.FormatInt(int64(s), 10), nil
+basic.go:87:            return strconv.FormatInt(int64(s), 10), nil
+basic.go:89:            return strconv.FormatInt(s, 10), nil
+basic.go:91:            return strconv.FormatUint(uint64(s), 10), nil
+basic.go:93:            return strconv.FormatUint(uint64(s), 10), nil
+basic.go:95:            return strconv.FormatUint(uint64(s), 10), nil
+basic.go:97:            return strconv.FormatUint(uint64(s), 10), nil
+basic.go:99:            return strconv.FormatUint(s, 10), nil
+basic.go:101:           return s.String(), nil
+basic.go:103:           return string(s), nil
+basic.go:105:           return string(s), nil
+basic.go:107:           return string(s), nil
+basic.go:109:           return string(s), nil
+basic.go:111:           return string(s), nil
+basic.go:113:           return string(s), nil
+basic.go:114:   case nil:
+basic.go:115:           return "", nil
+basic.go:117:           return s.String(), nil
+basic.go:119:           return s.Error(), nil
+indirect.go:15:// as necessary to reach the base type (or nil).
+indirect.go:17: if i == nil {
+indirect.go:18:         return nil, false
+indirect.go:21: if t := reflect.TypeOf(i); t.Kind() != reflect.Ptr {
+indirect.go:22:         // Avoid creating a reflect.Value if it's not a pointer.
+indirect.go:26: v := reflect.ValueOf(i)
+indirect.go:27: for v.Kind() == reflect.Ptr && !v.IsNil() {
+alias_test.go:46:               {nil, nil, false},
+basic_test.go:38:               {nil, false, false},
+basic_test.go:122:              {nil, "", false},
+cast_test.go:148:               if err != nil {
+cast_test.go:157:               if err != nil {
+map_test.go:31:                                 if v == nil {
+map_test.go:87:                 //              if v == nil {
+map_test.go:184:                {nil, nil, true},
+map_test.go:185:                {testing.T{}, nil, true},
+map_test.go:186:                {map[any]any{"foo": testing.T{}}, nil, true},
+map_test.go:187:                {map[any]any{Key{"foo"}: "bar"}, nil, true}, // 
+ToStringE(Key{"foo"}) should fail
+map_test.go:188:                {jsonStringMapString, nil, true},
+map_test.go:189:                {"", nil, true},
+map_test.go:203:                {nil, nil, true},
+map_test.go:204:                {testing.T{}, nil, true},
+map_test.go:205:                {"", nil, true},
+map_test.go:219:                {nil, nil, true},
+map_test.go:220:                {testing.T{}, nil, true},
+map_test.go:221:                {"", nil, true},
+map_test.go:238:                {nil, nil, true},
+map_test.go:239:                {testing.T{}, nil, true},
+map_test.go:240:                {"", nil, true},
+map_test.go:258:                {nil, nil, true},
+map_test.go:259:                {testing.T{}, nil, true},
+map_test.go:260:                {"", nil, true},
+map_test.go:283:                {nil, nil, true},
+map_test.go:284:                {testing.T{}, nil, true},
+map_test.go:285:                {invalidJsonString, nil, true},
+map_test.go:286:                {emptyString, nil, true},
+number_internal_test.go:69:                                     if err != nil {
+number_internal_test.go:82:                                     if err != nil {
+number_test.go:95:              samples:     []any{uint(0), uint(1), uint(8), 
+uint(0), uint(8), uint(0), MyUint(8), uint(0), uint(math.MaxUint), nil, nil},
+number_test.go:140:             samples:     []any{float32(0), float32(1), 
+float32(8), float32(-8), float32(8.31), float32(-8.31), MyFloat32(8), 
+float32(-math.MaxFloat32), float32(math.MaxFloat32), nil, nil},
+number_test.go:149:             samples:     []any{float64(0), float64(1), 
+float64(8), float64(-8), float64(8.31), float64(-8.31), MyFloat64(8), 
+float64(-math.MaxFloat64), float64(math.MaxFloat64), nil, nil},
+number_test.go:171:     kind := reflect.TypeOf(zero).Kind()
+number_test.go:172:     isUint := kind == reflect.Uint || kind == reflect.Uint8 
+|| kind == reflect.Uint16 || kind == reflect.Uint32 || kind == reflect.Uint64
+number_test.go:177:     if kind == reflect.Float64 {
+number_test.go:217:             {nil, zero, false},
+number_test.go:236:     if isUint && underflowString != nil {
+number_test.go:240:     if kind == reflect.Uint64 && isUint && overflowString !=
+nil {
+slice_test.go:33:                                       if v == nil {
+slice_test.go:89:                                       if v == nil {
+slice_test.go:149:              {nil, nil, true},
+slice_test.go:150:              {testing.T{}, nil, true},
+slice_test.go:151:              {[]string{"foo", "bar"}, nil, true},
+slice_test.go:165:              {nil, nil, true},
+slice_test.go:166:              {testing.T{}, nil, true},
+slice_test.go:167:              {[]string{"foo", "bar"}, nil, true},
+slice_test.go:181:              {nil, nil, true},
+slice_test.go:182:              {testing.T{}, nil, true},
+slice_test.go:183:              {[]string{"foo", "bar"}, nil, true},
+slice_test.go:203:              {nil, nil, true},
+slice_test.go:204:              {testing.T{}, nil, true},
+slice_test.go:205:              {[]string{"foo", "bar"}, nil, true},
+slice_test.go:224:              {nil, nil, true},
+slice_test.go:225:              {testing.T{}, nil, true},
+slice_test.go:226:              {[]string{"foo", "bar"}, nil, true},
+slice_test.go:238:              {nil, nil, true},
+slice_test.go:239:              {testing.T{}, nil, true},
+slice_test.go:263:              {nil, nil, true},
+slice_test.go:264:              {testing.T{}, nil, true},
+slice_test.go:278:              {nil, nil, true},
+slice_test.go:279:              {testing.T{}, nil, true},
+slice_test.go:280:              {[]string{"invalid"}, nil, true},
+time_test.go:173:                       t.Run("nil default location", func(t 
+*testing.T) {
+time_test.go:176:                               converted, err := 
+cast.ToTimeInDefaultLocationE(est2016str, nil)
+time_test.go:236:                       if err != nil {
+time_test.go:260:       //   - can't use reflect.DeepEqual because time.Location
+has internal
+time_test.go:265:       } else if a == nil || b == nil {
+time_test.go:273:       if err != nil {
+
+────────────────────────────────────────────────────────────────────────────────
+
+mini-swe-agent (step 3, $0.00):
+```
+cd /testbed && printf '%s\n' '--- alias resolution ---' && nl -ba alias.go | sed
+-n '1,180p' && mkdir -p .repro && cat > .repro/main.go <<'EOF'
+package main
+import (
+ "fmt"
+ cast "github.com/spf13/cast"
+)
+func main() {
+ var s *string
+ v, err := cast.ToStringE(s)
+ fmt.Printf("%q %v\n", v, err)
+}
+EOF
+printf '%s\n' '--- reproduction (timeout protects shell) ---' && timeout 2s go 
+run ./.repro/main.go; status=$?; rm -rf .repro; exit $status
+```
+
+Tool:
+<returncode>
+1
+<output_head>
+--- alias resolution ---
+     1  // Copyright © 2014 Steve Francia <spf@spf13.com>.
+     2  //
+     3  // Use of this source code is governed by an MIT-style
+     4  // license that can be found in the LICENSE file.
+     5  package cast
+     6  
+     7  import (
+     8          "reflect"
+     9          "slices"
+    10  )
+    11  
+    12  var kindNames = []string{
+    13          reflect.String:  "string",
+    14          reflect.Bool:    "bool",
+    15          reflect.Int:     "int",
+    16          reflect.Int8:    "int8",
+    17          reflect.Int16:   "int16",
+    18          reflect.Int32:   "int32",
+    19          reflect.Int64:   "int64",
+    20          reflect.Uint:    "uint",
+    21          reflect.Uint8:   "uint8",
+    22          reflect.Uint16:  "uint16",
+    23          reflect.Uint32:  "uint32",
+    24          reflect.Uint64:  "uint64",
+    25          reflect.Float32: "float32",
+    26          reflect.Float64: "float64",
+    27  }
+    28  
+    29  var kinds = map[reflect.Kind]func(reflect.Value) any{
+    30          reflect.String:  func(v reflect.Value) any { return v.String() 
+},
+    31          reflect.Bool:    func(v reflect.Value) any { return v.Bool() },
+    32          reflect.Int:     func(v reflect.Value) any { return int(v.Int())
+},
+    33          reflect.Int8:    func(v reflect.Value) any { return 
+int8(v.Int()) },
+    34          reflect.Int16:   func(v reflect.Value) any { return 
+int16(v.Int()) },
+    35          reflect.Int32:   func(v reflect.Value) any { return 
+int32(v.Int()) },
+    36          reflect.Int64:   func(v reflect.Value) any { return v.Int() },
+    37          reflect.Uint:    func(v reflect.Value) any { return 
+uint(v.Uint()) },
+    38          reflect.Uint8:   func(v reflect.Value) any { return 
+uint8(v.Uint()) },
+    39          reflect.Uint16:  func(v reflect.Value) any { return 
+uint16(v.Uint()) },
+    40          reflect.Uint32:  func(v reflect.Value) any { return 
+uint32(v.Uint()) },
+    41          reflect.Uint64:  func(v reflect.Value) any { return v.Uint() },
+    42          reflect.Float32: func(v reflect.Value) any { return 
+float32(v.Float()) },
+    43          reflect.Float64: func(v reflect.Value) any { return v.Float() },
+    44  }
+    45  
+    46  // resolveAlias attempts to resolve a named type to its underlying basic
+type (if possible).
+    47  //
+    48  // Pointers are expected to be indirected by this point.
+    49  func resolveAlias(i any) (any, bool) {
+    50          if i == nil {
+    51                  return nil, false
+    52          }
+    53  
+    54          t := reflect.TypeOf(i)
+    55  
+    56          // Not a named type
+    57          if t.Name() == "" || slices.Contains(kindNames, t.Name()) {
+    58                  return i, false
+    59          }
+    60  
+    61          resolve, ok := kinds[t.Kind()]
+    62          if !ok { // Not a supported kind
+    63                  return i, false
+    64          }
+    65  
+    66          v := reflect.ValueOf(i)
+    67  
+    68          return resolve(v), true
+    69  }
+--- reproduction (timeout protects shell) ---
+runtime: goroutine stack exceeds 1000000000-byte limit
+runtime: sp=0xc0200e0360 stack=[0xc0200e0000, 0xc0400e0000]
+fatal error: stack overflow
+
+runtime stack:
+runtime.throw({0x4d76db?, 0x200000008?})
+        /usr/local/go/src/runtime/panic.go:1073 +0x48 fp=0x7ffdb84f9508 
+sp=0x7ffdb84f94d8 pc=0x465e08
+runtime.newstack()
+        /usr/local/go/src/runtime/stack.go:1117 +0x5bd fp=0x7ffdb84f9648 
+sp=0x7ffdb84f9508 pc=0x44c33d
+runtime.morestack()
+        /usr/local/go/src/runtime/asm_amd64.s:621 +0x7a fp=0x7ffdb84f9650 
+sp=0x7ffdb84f9648 pc=0x46ab3a
+
+goroutine 1 gp=0xc0000061c0 m=0 mp=0x59f1c0 [running]:
+reflect.valueInterface({0x4b8da0?, 0x0?, 0x16?}, 0x1?)
+        /usr/local/go/src/reflect/value.go:1487 +0x115 fp=0xc0200e0370 
+sp=0xc0200e0368 pc=0x483355
+reflect.Value.Interface(...)
+        /usr/local/go/src/reflect/value.go:1484
+github.com/spf13/cast.indirect({0x4b8da0, 0x0})
+        /testbed/indirect.go:31 +0x11f fp=0xc0200e03c0 sp=0xc0200e0370 
+pc=0x4b181f
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:121 +0x4a5 fp=0xc0200e0448 sp=0xc0200e03c0 pc=0x4b1605
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e04d0 sp=0xc0200e0448 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0558 sp=0xc0200e04d0 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e05e0 sp=0xc0200e0558 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0668 sp=0xc0200e05e0 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e06f0 sp=0xc0200e0668 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0778 sp=0xc0200e06f0 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0800 sp=0xc0200e0778 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0888 sp=0xc0200e0800 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0910 sp=0xc0200e0888 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0200e0998 sp=0xc0200e0910 pc=0x4b16a5
+github.com/spf13/cast.T
+<output_tail>
+
+        /testbed/basic.go:122 +0x545 fp=0xc0400df658 sp=0xc0400df5d0 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400df6e0 sp=0xc0400df658 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400df768 sp=0xc0400df6e0 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400df7f0 sp=0xc0400df768 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400df878 sp=0xc0400df7f0 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400df900 sp=0xc0400df878 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400df988 sp=0xc0400df900 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfa10 sp=0xc0400df988 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfa98 sp=0xc0400dfa10 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfb20 sp=0xc0400dfa98 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfba8 sp=0xc0400dfb20 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfc30 sp=0xc0400dfba8 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfcb8 sp=0xc0400dfc30 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfd40 sp=0xc0400dfcb8 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfdc8 sp=0xc0400dfd40 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfe50 sp=0xc0400dfdc8 pc=0x4b16a5
+github.com/spf13/cast.ToStringE({0x4b8da0, 0x0})
+        /testbed/basic.go:122 +0x545 fp=0xc0400dfed8 sp=0xc0400dfe50 pc=0x4b16a5
+main.main()
+        /testbed/.repro/main.go:8 +0x25 fp=0xc0400dff50 sp=0xc0400dfed8 
+pc=0x4b1885
+runtime.main()
+        /usr/local/go/src/runtime/proc.go:272 +0x28b fp=0xc0400dffe0 
+sp=0xc0400dff50 pc=0x43578b
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1700 +0x1 fp=0xc0400dffe8 
+sp=0xc0400dffe0 pc=0x46c861
+
+goroutine 2 gp=0xc000006700 m=nil [force gc (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:424 +0xce fp=0xc000040fa8 
+sp=0xc000040f88 pc=0x465eee
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:430
+runtime.forcegchelper()
+        /usr/local/go/src/runtime/proc.go:337 +0xb3 fp=0xc000040fe0 
+sp=0xc000040fa8 pc=0x435ad3
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1700 +0x1 fp=0xc000040fe8 
+sp=0xc000040fe0 pc=0x46c861
+created by runtime.init.7 in goroutine 1
+        /usr/local/go/src/runtime/proc.go:325 +0x1a
+
+goroutine 3 gp=0xc000006c40 m=nil [GC sweep wait]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:424 +0xce fp=0xc000041780 
+sp=0xc000041760 pc=0x465eee
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:430
+runtime.bgsweep(0xc000022080)
+        /usr/local/go/src/runtime/mgcsweep.go:277 +0x94 fp=0xc0000417c8 
+sp=0xc000041780 pc=0x421474
+runtime.gcenable.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:204 +0x25 fp=0xc0000417e0 
+sp=0xc0000417c8 pc=0x415de5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1700 +0x1 fp=0xc0000417e8 
+sp=0xc0000417e0 pc=0x46c861
+created by runtime.gcenable in goroutine 1
+        /usr/local/go/src/runtime/mgc.go:204 +0x66
+
+goroutine 4 gp=0xc000006e00 m=nil [GC scavenge wait]:
+runtime.gopark(0xc000022080?, 0x4fd3c0?, 0x1?, 0x0?, 0xc000006e00?)
+        /usr/local/go/src/runtime/proc.go:424 +0xce fp=0xc000041f78 
+sp=0xc000041f58 pc=0x465eee
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:430
+runtime.(*scavengerState).park(0x59e400)
+        /usr/local/go/src/runtime/mgcscavenge.go:425 +0x49 fp=0xc000041fa8 
+sp=0xc000041f78 pc=0x41eea9
+runtime.bgscavenge(0xc000022080)
+        /usr/local/go/src/runtime/mgcscavenge.go:653 +0x3c fp=0xc000041fc8 
+sp=0xc000041fa8 pc=0x41f41c
+runtime.gcenable.gowrap2()
+        /usr/local/go/src/runtime/mgc.go:205 +0x25 fp=0xc000041fe0 
+sp=0xc000041fc8 pc=0x415d85
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1700 +0x1 fp=0xc000041fe8 
+sp=0xc000041fe0 pc=0x46c861
+created by runtime.gcenable in goroutine 1
+        /usr/local/go/src/runtime/mgc.go:205 +0xa5
+
+goroutine 5 gp=0xc000007340 m=nil [finalizer wait]:
+runtime.gopark(0x490013?, 0xc000040660?, 0xfe?, 0xc8?, 0x7b7da7c6ca48?)
+        /usr/local/go/src/runtime/proc.go:424 +0xce fp=0xc000040620 
+sp=0xc000040600 pc=0x465eee
+runtime.runfinq()
+        /usr/local/go/src/runtime/mfinal.go:193 +0x107 fp=0xc0000407e0 
+sp=0xc000040620 pc=0x414e67
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1700 +0x1 fp=0xc0000407e8 
+sp=0xc0000407e0 pc=0x46c861
+created by runtime.createfing in goroutine 1
+        /usr/local/go/src/runtime/mfinal.go:163 +0x3d
+exit status 2
+
+<elided_chars>
+8171
+<warning>
+Output too long.
+────────────────────────────────────────────────────────────────────────────────
+
+mini-swe-agent (step 4, $0.00):
+The reproduction confirms the failure: `indirect` stops at a nil pointer but 
+returns `v.Interface()`, which is still a typed nil `*string`. `ToStringE` 
+therefore receives the same pointer again and repeats forever. The focused fix 
+is in `indirect.go`: when dereferencing terminates on a nil pointer, return an 
+untyped `nil`; existing `case nil` handling in `ToStringE` then correctly 
+returns `""`. This also preserves pointer dereferencing behavior for non-nil 
+values and lets other converters use their existing nil cases.
+
+```
+cd /testbed && python3 - <<'EOF'
+from pathlib import Path
+p = Path('indirect.go')
+s = p.read_text()
+old = '''\tfor v.Kind() == reflect.Ptr && !v.IsNil() {
+\t\tv = v.Elem()
+\t}
+
+\treturn v.Interface(), true
+'''
+new = '''\tfor v.Kind() == reflect.Ptr && !v.IsNil() {
+\t\tv = v.Elem()
+\t}
+
+\tif v.Kind() == reflect.Ptr && v.IsNil() {
+\t\treturn nil, true
+\t}
+
+\treturn v.Interface(), true
+'''
+if old not in s:
+    raise SystemExit('expected code not found')
+p.write_text(s.replace(old, new))
+EOF
+gofmt -w indirect.go
+git diff -- indirect.go
+printf '%s\n' '--- focused reproduction ---'
+mkdir -p .repro && cat > .repro/main.go <<'EOF'
+package main
+
+import (
+        "fmt"
+
+        cast "github.com/spf13/cast"
+)
+
+type namedString string
+
+func main() {
+        var s *string
+        var i *int
+        value := "value"
+        p := &value
+        var np **string
+        var ns namedString = "named"
+        for _, input := range []any{s, i, p, np, ns, nil} {
+                v, err := cast.ToStringE(input)
+                fmt.Printf("%q %v\n", v, err)
+        }
+}
+EOF
+go run ./.repro/main.go
+rm -rf .repro
+printf '%s\n' '--- full tests ---'
+go test ./...
+```
+
+Tool:
+<returncode>
+0
+<output>
+diff --git a/indirect.go b/indirect.go
+index 1c10d86..48636bc 100644
+--- a/indirect.go
++++ b/indirect.go
+@@ -28,5 +28,9 @@ func indirect(i any) (any, bool) {
+                v = v.Elem()
+        }
+ 
++       if v.Kind() == reflect.Ptr && v.IsNil() {
++               return nil, true
++       }
++
+        return v.Interface(), true
+ }
+--- focused reproduction ---
+"" <nil>
+"" <nil>
+"value" <nil>
+"" <nil>
+"named" <nil>
+"" <nil>
+--- full tests ---
+?       github.com/spf13/cast/internal  [no test files]
+ok      github.com/spf13/cast   0.091s
+
+────────────────────────────────────────────────────────────────────────────────
+
+mini-swe-agent (step 5, $0.00):
+The fix works for the reported case and edge cases (nil `*int`, nested nil 
+pointers, non-nil pointers, named strings, and untyped nil), and the full test 
+suite passes. I’ll do a final diff/status review and run the package tests once 
+more, ensuring only the intended production file changed.
+
+```
+cd /testbed && git diff --check && git status --short && git diff --stat && git 
+diff && go test ./... && go vet ./...
+```
+
+Tool:
+<returncode>
+0
+<output>
+ M indirect.go
+ indirect.go | 4 ++++
+ 1 file changed, 4 insertions(+)
+diff --git a/indirect.go b/indirect.go
+index 1c10d86..48636bc 100644
+--- a/indirect.go
++++ b/indirect.go
+@@ -28,5 +28,9 @@ func indirect(i any) (any, bool) {
+                v = v.Elem()
+        }
+ 
++       if v.Kind() == reflect.Ptr && v.IsNil() {
++               return nil, true
++       }
++
+        return v.Interface(), true
+ }
+?       github.com/spf13/cast/internal  [no test files]
+ok      github.com/spf13/cast   (cached)
+
+────────────────────────────────────────────────────────────────────────────────
+
+mini-swe-agent (step 6, $0.00):
+Final review is clean: only `indirect.go` was modified, the change is minimal, 
+formatting and whitespace checks pass, `go test ./...` passes, and `go vet 
+./...` reports no issues. The nil pointer now becomes an untyped nil before 
+recursive conversion, producing the required empty string without recursion.
+
+```
+echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+```
+
+Tool:
+<returncode>
+-1
+<output>
+
+<exception_info>
+action was not executed
+
+Exit:
+
+Saved trajectory to '/logs/agent/mini-swe-agent.trajectory.json'

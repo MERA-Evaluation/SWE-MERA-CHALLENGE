@@ -1,0 +1,37 @@
+{
+    "schema_version": 2,
+    "task": {
+        "name": "go-001",
+        "type": "local",
+        "digest": "sha256:d54155c7e4425c178f1cac67f37670a07ad28a3fd1b5e9e0f2e8e44a3f21c7aa",
+        "source": "tasks",
+        "path": "tasks/go-001"
+    },
+    "install_only": false,
+    "timeout_multiplier": 1.0,
+    "agent": {
+        "name": "mini-swe-agent",
+        "model_name": "openrouter/openai/gpt-5.6-luna",
+        "skills": [],
+        "resume_trajectory": false,
+        "extra_allowed_hosts": [],
+        "kwargs": {},
+        "mcp_servers": []
+    },
+    "bridge_inputs": {},
+    "skills": [],
+    "environment": {
+        "type": "docker",
+        "force_build": false,
+        "delete": true,
+        "cpu_enforcement_policy": "auto",
+        "memory_enforcement_policy": "auto",
+        "extra_docker_compose": [],
+        "kwargs": {},
+        "extra_allowed_hosts": []
+    },
+    "verifier": {
+        "disable": false,
+        "environment_mode": "shared"
+    }
+}

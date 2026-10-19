@@ -1,0 +1,14 @@
+diff --git a/indirect.go b/indirect.go
+index 1c10d86..48636bc 100644
+--- a/indirect.go
++++ b/indirect.go
+@@ -28,5 +28,9 @@ func indirect(i any) (any, bool) {
+ 		v = v.Elem()
+ 	}
+ 
++	if v.Kind() == reflect.Ptr && v.IsNil() {
++		return nil, true
++	}
++
+ 	return v.Interface(), true
+ }
