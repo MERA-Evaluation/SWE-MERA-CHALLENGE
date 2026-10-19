@@ -1,0 +1,3 @@
+username: username
+agent: custom_agent
+model: qwen35-9b-chat
