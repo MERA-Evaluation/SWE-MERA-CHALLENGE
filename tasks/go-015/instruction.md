@@ -141,11 +141,6 @@ Additional documentation:
 
 TEST-SUITE.md
 PROGRESS.md
-
-## Repository Information
-- **Repository**: deepnoodle-ai/risor
-- **Pull Request**: #462
-- **Base Commit**: `4362227f5eb7c6b20dd10046e256b1cb0e5a398a`
 </issue_description>
 
 Can you help me implement the necessary changes to the repository so that the requirements specified in the <issue_description> are met?
@@ -194,7 +189,7 @@ Phase 7. VERIFICATION: Test your implementation thoroughly.
    7.2 Add edge cases to your test script to ensure comprehensive coverage.
    7.3 Run existing tests related to the modified code to ensure you haven't broken anything.
 
-Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit 4362227f5eb7c6b20dd10046e256b1cb0e5a398a.
+Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit.
    8.1 Ensure you've fully addressed all requirements.
    8.2 Run any tests in the repository related to:
       8.2.1 The issue you are fixing

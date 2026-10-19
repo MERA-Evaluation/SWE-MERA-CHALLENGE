@@ -47,11 +47,6 @@ func TestRangeOffsetAfterComment(t *testing.T) {
 ```
 
 This test passes on v2.2.4, but fails with 2.3.0. It seems to me like the position in the older version was correct, or at least better than the new position.
-
-## Repository Information
-- **Repository**: pelletier/go-toml
-- **Pull Request**: #1056
-- **Base Commit**: `f36a3ece9e3adf0efaf9f9bd3591c3001f17602b`
 </issue_description>
 
 Can you help me implement the necessary changes to the repository so that the requirements specified in the <issue_description> are met?
@@ -100,7 +95,7 @@ Phase 7. VERIFICATION: Test your implementation thoroughly.
    7.2 Add edge cases to your test script to ensure comprehensive coverage.
    7.3 Run existing tests related to the modified code to ensure you haven't broken anything.
 
-Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit f36a3ece9e3adf0efaf9f9bd3591c3001f17602b.
+Phase 8. FINAL REVIEW: Carefully re-read the problem description and compare your changes with the base commit.
    8.1 Ensure you've fully addressed all requirements.
    8.2 Run any tests in the repository related to:
       8.2.1 The issue you are fixing
