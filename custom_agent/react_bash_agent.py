@@ -32,9 +32,19 @@ You have exactly one tool: bash. Use it for every interaction with the
 repository. Make the smallest correct change, preserve existing conventions,
 do not modify tests unless the task explicitly requires it, and avoid creating
 backup or temporary files in the repository. Before finishing, inspect the
-diff and run the most relevant tests you can. When the task is complete, return
-a concise summary and the tests run without making another tool call.
+diff and run the most relevant tests you can.
+
+On every working turn, reason briefly and then make exactly one bash tool call.
+Do not repeat a command when its previous result is already available. When the
+task is complete, make one final bash tool call containing exactly this command:
+
+echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+
+Do not combine that command with any other command. It is the only completion
+signal; do not finish with a text-only response.
 """
+
+SUBMIT_COMMAND = "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"
 
 BASH_TOOL: dict[str, Any] = {
     "type": "function",
@@ -94,12 +104,12 @@ class ReactBashAgent(BaseAgent):
 
     def __init__(
         self,
-        max_steps: int | str = 50,
+        max_steps: int | str = 120,
         max_tokens: int | str = 4096,
         command_timeout_sec: int | str = 180,
         request_timeout_sec: int | str = 600,
-        max_tool_output_chars: int | str = 12000,
-        keep_full_tool_outputs: int | str = 12,
+        max_tool_output_chars: int | str = 10000,
+        keep_full_tool_outputs: int | str = 4,
         workdir: str = "/testbed",
         *args: Any,
         **kwargs: Any,
@@ -128,7 +138,7 @@ class ReactBashAgent(BaseAgent):
 
     @override
     def version(self) -> str:
-        return "0.1.0"
+        return "0.2.0"
 
     @override
     async def setup(self, environment: BaseEnvironment) -> None:
@@ -156,7 +166,7 @@ class ReactBashAgent(BaseAgent):
         old_indexes = tool_indexes[: -self.keep_full_tool_outputs]
         for index in old_indexes:
             content = str(compacted[index].get("content") or "")
-            compacted[index]["content"] = _truncate(content, 1200)
+            compacted[index]["content"] = _truncate(content, 800)
         return compacted
 
     async def _chat_completion(
@@ -265,6 +275,8 @@ class ReactBashAgent(BaseAgent):
 
         timeout = httpx.Timeout(float(self.request_timeout_sec), connect=30.0)
         final_answer = ""
+        last_command: str | None = None
+        repeat_streak = 0
 
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -288,10 +300,20 @@ class ReactBashAgent(BaseAgent):
 
                     choice = choices[0]
                     raw_message = choice.get("message") or {}
+                    reasoning_content = (
+                        raw_message.get("reasoning_content")
+                        or raw_message.get("reasoning")
+                    )
                     assistant_message: dict[str, Any] = {
                         "role": "assistant",
                         "content": raw_message.get("content"),
                     }
+                    if reasoning_content:
+                        # vLLM returns this as `reasoning`; its chat template reads
+                        # the normalized OpenAI-compatible `reasoning_content` field
+                        # on the next request. Without it, the model loses its plan
+                        # after every tool call and repeatedly starts from scratch.
+                        assistant_message["reasoning_content"] = reasoning_content
                     tool_calls = raw_message.get("tool_calls") or []
                     if tool_calls:
                         assistant_message["tool_calls"] = tool_calls
@@ -299,7 +321,6 @@ class ReactBashAgent(BaseAgent):
                     trajectory["messages"].append(
                         {
                             **assistant_message,
-                            "reasoning": raw_message.get("reasoning"),
                             "finish_reason": choice.get("finish_reason"),
                         }
                     )
@@ -313,11 +334,23 @@ class ReactBashAgent(BaseAgent):
                     trajectory["steps"].append(step_record)
 
                     if not tool_calls:
-                        final_answer = str(raw_message.get("content") or "")
-                        trajectory["stop_reason"] = "assistant_final"
+                        finish_reason = str(choice.get("finish_reason") or "")
+                        correction = {
+                            "role": "user",
+                            "content": (
+                                "Your previous response did not contain a bash tool "
+                                f"call (finish_reason={finish_reason!r}). Continue "
+                                "concisely with exactly one bash tool call. If the "
+                                f"task is complete, call `{SUBMIT_COMMAND}` exactly."
+                            ),
+                        }
+                        messages.append(correction)
+                        trajectory["messages"].append(correction)
+                        step_record["format_error"] = "missing_tool_call"
                         self._save_trajectory(trajectory)
-                        return
+                        continue
 
+                    submitted = False
                     for tool_call in tool_calls:
                         tool_call_id = str(tool_call.get("id") or "missing-id")
                         function = tool_call.get("function") or {}
@@ -345,27 +378,43 @@ class ReactBashAgent(BaseAgent):
                         elif not isinstance(command, str) or not command.strip():
                             tool_output = "Tool error: bash requires a non-empty command."
                         else:
-                            try:
-                                result = await environment.exec(
-                                    command=command,
-                                    cwd=self.workdir,
-                                    timeout_sec=self.command_timeout_sec,
-                                )
-                                stdout = _truncate(
-                                    result.stdout, self.max_tool_output_chars
-                                )
-                                stderr = _truncate(
-                                    result.stderr, self.max_tool_output_chars
-                                )
+                            normalized_command = command.strip()
+                            is_submit = (
+                                len(tool_calls) == 1
+                                and normalized_command == SUBMIT_COMMAND
+                            )
+                            if (
+                                normalized_command == last_command
+                                and not is_submit
+                            ):
+                                repeat_streak += 1
                                 tool_output = (
-                                    f"exit_code: {result.return_code}\n"
-                                    f"stdout:\n{stdout}\n"
-                                    f"stderr:\n{stderr}"
+                                    "Tool call skipped: this is the same command as "
+                                    "the immediately preceding command, whose result "
+                                    "is already in the conversation. Use that result "
+                                    "and take a different action."
                                 )
-                            except Exception as exc:
-                                tool_output = (
-                                    f"Tool execution error: {type(exc).__name__}: {exc}"
-                                )
+                            else:
+                                repeat_streak = 0
+                                try:
+                                    result = await environment.exec(
+                                        command=command,
+                                        cwd=self.workdir,
+                                        timeout_sec=self.command_timeout_sec,
+                                    )
+                                    tool_output = _truncate(
+                                        f"exit_code: {result.return_code}\n"
+                                        f"stdout:\n{result.stdout or ''}\n"
+                                        f"stderr:\n{result.stderr or ''}",
+                                        self.max_tool_output_chars,
+                                    )
+                                except Exception as exc:
+                                    tool_output = (
+                                        "Tool execution error: "
+                                        f"{type(exc).__name__}: {exc}"
+                                    )
+                            last_command = normalized_command
+                            submitted = submitted or is_submit
 
                         tool_message = {
                             "role": "tool",
@@ -378,6 +427,13 @@ class ReactBashAgent(BaseAgent):
                         step_record["tool_results"].append(tool_message)
 
                     self._save_trajectory(trajectory)
+                    if submitted:
+                        final_answer = str(
+                            raw_message.get("content") or reasoning_content or ""
+                        )
+                        trajectory["stop_reason"] = "submitted"
+                        self._save_trajectory(trajectory)
+                        return
 
                 trajectory["stop_reason"] = "max_steps"
         except Exception as exc:
