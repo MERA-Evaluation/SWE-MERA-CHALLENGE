@@ -6,6 +6,7 @@ API_KEY="${VLLM_API_KEY:-dummy}"
 CONTAINER_NAME="${VLLM_CONTAINER_NAME:-inference_container}"
 MODEL_NAME="${VLLM_MODEL_NAME:?VLLM_MODEL_NAME is required}"
 WAIT_TIMEOUT_SEC="${VLLM_WAIT_TIMEOUT_SEC:-1800}"
+EXPECTED_GPU_COUNT="${VLLM_EXPECTED_GPU_COUNT:-3}"
 
 test_tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$test_tmp_dir"' EXIT
@@ -15,13 +16,27 @@ chat_response="$test_tmp_dir/chat.json"
 request_body="$test_tmp_dir/request.json"
 
 deadline=$((SECONDS + WAIT_TIMEOUT_SEC))
+
+if ! actual_gpu_count="$(
+  docker exec "$CONTAINER_NAME" sh -c \
+    'nvidia-smi --query-gpu=index --format=csv,noheader | wc -l' 2>/dev/null \
+    | tr -d '[:space:]'
+)"; then
+  echo "Cannot inspect GPUs in container ${CONTAINER_NAME}" >&2
+  exit 1
+fi
+if [[ "$actual_gpu_count" != "$EXPECTED_GPU_COUNT" ]]; then
+  echo "Container ${CONTAINER_NAME} sees ${actual_gpu_count:-0} GPU(s), expected ${EXPECTED_GPU_COUNT}" >&2
+  exit 1
+fi
+
 echo "Waiting for ${BASE_URL}/models ..."
 while ((SECONDS < deadline)); do
   if curl -fsS \
     --connect-timeout 2 \
     --max-time 10 \
     -H "Authorization: Bearer ${API_KEY}" \
-    "${BASE_URL}/models" >"$models_response"; then
+    "${BASE_URL}/models" >"$models_response" 2>/dev/null; then
     break
   fi
 

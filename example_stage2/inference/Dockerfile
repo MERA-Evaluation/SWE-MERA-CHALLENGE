@@ -13,4 +13,4 @@ ENV HF_HUB_OFFLINE=1 \
 EXPOSE 8000
 
 ENTRYPOINT ["vllm", "serve"]
-CMD ["/models/Qwen3.5-9B", "--host", "0.0.0.0", "--port", "8000", "--api-key", "dummy", "--attention-backend", "flashinfer", "--block-size", "256", "--enable-prefix-caching", "--enable-prompt-tokens-details", "--kv-cache-dtype", "fp8", "--max-model-len", "65536", "--reasoning-parser", "qwen3", "--enable-auto-tool-choice", "--tool-call-parser", "qwen3_xml", "--served-model-name", "qwen35-9b-chat", "--tensor-parallel-size", "2", "--trust-remote-code"]
+CMD ["/models/Qwen3.5-9B", "--host", "0.0.0.0", "--port", "8000", "--api-key", "dummy", "--attention-backend", "flashinfer", "--block-size", "256", "--enable-prefix-caching", "--enable-prompt-tokens-details", "--kv-cache-dtype", "fp8", "--max-model-len", "65536", "--max-num-seqs", "512", "--reasoning-parser", "qwen3", "--enable-auto-tool-choice", "--tool-call-parser", "qwen3_xml", "--served-model-name", "qwen35-9b-chat", "--data-parallel-size", "3", "--trust-remote-code"]

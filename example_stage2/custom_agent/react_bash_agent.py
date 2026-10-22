@@ -110,6 +110,7 @@ class ReactBashAgent(BaseAgent):
         request_timeout_sec: int | str = 600,
         max_tool_output_chars: int | str = 10000,
         keep_full_tool_outputs: int | str = 4,
+        max_history_steps: int | str = 8,
         workdir: str = "/testbed",
         *args: Any,
         **kwargs: Any,
@@ -128,6 +129,9 @@ class ReactBashAgent(BaseAgent):
         )
         self.keep_full_tool_outputs = _positive_int(
             keep_full_tool_outputs, "keep_full_tool_outputs"
+        )
+        self.max_history_steps = _positive_int(
+            max_history_steps, "max_history_steps"
         )
         self.workdir = workdir
 
@@ -154,10 +158,38 @@ class ReactBashAgent(BaseAgent):
         return self.model_name
 
     def _request_messages(
-        self, messages: list[dict[str, Any]]
+        self,
+        messages: list[dict[str, Any]],
+        history_steps: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Keep the full conversation shape while compacting old tool output."""
-        compacted = [dict(message) for message in messages]
+        """Return a bounded, protocol-valid suffix of the ReAct conversation."""
+        history_limit = history_steps or self.max_history_steps
+        prefix = [dict(message) for message in messages[:2]]
+        chunks: list[list[dict[str, Any]]] = []
+        for message in messages[2:]:
+            copied = dict(message)
+            if copied.get("role") == "assistant":
+                chunks.append([copied])
+            elif chunks:
+                chunks[-1].append(copied)
+            else:
+                prefix.append(copied)
+
+        selected_chunks = chunks[-history_limit:]
+        compacted = prefix
+        if len(selected_chunks) < len(chunks):
+            omission_note = (
+                "\n\nEarlier working turns were omitted to stay within the "
+                "model context limit. The filesystem contains their effects. "
+                "Inspect the current repository state and continue; do not "
+                "restart the task from scratch."
+            )
+            compacted[0]["content"] = (
+                str(compacted[0].get("content") or "") + omission_note
+            )
+        for chunk in selected_chunks:
+            compacted.extend(chunk)
+
         tool_indexes = [
             index
             for index, message in enumerate(compacted)
@@ -167,6 +199,38 @@ class ReactBashAgent(BaseAgent):
         for index in old_indexes:
             content = str(compacted[index].get("content") or "")
             compacted[index]["content"] = _truncate(content, 800)
+
+        for message in compacted:
+            if message.get("role") != "assistant":
+                continue
+            if message.get("content") is not None:
+                message["content"] = _truncate(str(message["content"]), 2000)
+            for key in ("reasoning_content", "reasoning"):
+                if message.get(key) is not None:
+                    message[key] = _truncate(str(message[key]), 3000)
+            bounded_calls = []
+            for tool_call in message.get("tool_calls") or []:
+                bounded_call = dict(tool_call)
+                function = dict(bounded_call.get("function") or {})
+                raw_arguments = function.get("arguments")
+                if isinstance(raw_arguments, str):
+                    try:
+                        arguments = json.loads(raw_arguments)
+                    except json.JSONDecodeError:
+                        arguments = None
+                    if isinstance(arguments, dict) and isinstance(
+                        arguments.get("command"), str
+                    ):
+                        arguments["command"] = _truncate(
+                            arguments["command"], 4000
+                        )
+                        function["arguments"] = json.dumps(
+                            arguments, ensure_ascii=False
+                        )
+                bounded_call["function"] = function
+                bounded_calls.append(bounded_call)
+            if bounded_calls:
+                message["tool_calls"] = bounded_calls
         return compacted
 
     async def _chat_completion(
@@ -176,14 +240,6 @@ class ReactBashAgent(BaseAgent):
         api_key: str,
         messages: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        payload = {
-            "model": self._api_model_name(),
-            "messages": self._request_messages(messages),
-            "tools": [BASH_TOOL],
-            "tool_choice": "auto",
-            "temperature": 0,
-            "max_tokens": self.max_tokens,
-        }
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -192,7 +248,17 @@ class ReactBashAgent(BaseAgent):
             headers["X-Session-ID"] = self.session_id
 
         last_error: Exception | None = None
-        for attempt in range(1, 4):
+        history_steps = self.max_history_steps
+        max_attempts = 4
+        for attempt in range(1, max_attempts + 1):
+            payload = {
+                "model": self._api_model_name(),
+                "messages": self._request_messages(messages, history_steps),
+                "tools": [BASH_TOOL],
+                "tool_choice": "auto",
+                "temperature": 0,
+                "max_tokens": self.max_tokens,
+            }
             try:
                 response = await client.post(endpoint, headers=headers, json=payload)
                 if response.status_code < 400:
@@ -201,6 +267,14 @@ class ReactBashAgent(BaseAgent):
                 error = RuntimeError(
                     f"LLM returned HTTP {response.status_code}: {detail}"
                 )
+                context_too_long = response.status_code == 400 and (
+                    "maximum context length" in response.text.lower()
+                    or "context length" in response.text.lower()
+                )
+                if context_too_long and history_steps > 1:
+                    history_steps = max(1, history_steps // 2)
+                    last_error = error
+                    continue
                 if response.status_code not in {408, 409, 429} and not (
                     500 <= response.status_code < 600
                 ):
@@ -209,10 +283,12 @@ class ReactBashAgent(BaseAgent):
             except (httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_error = exc
 
-            if attempt < 3:
+            if attempt < max_attempts:
                 await asyncio.sleep(2 ** (attempt - 1))
 
-        raise RuntimeError(f"LLM request failed after 3 attempts: {last_error}")
+        raise RuntimeError(
+            f"LLM request failed after {max_attempts} attempts: {last_error}"
+        )
 
     def _save_trajectory(self, trajectory: dict[str, Any]) -> None:
         self.logs_dir.mkdir(parents=True, exist_ok=True)
