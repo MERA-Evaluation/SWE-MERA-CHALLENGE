@@ -1,4 +1,4 @@
-# SWE-MERA Stage 2 submission
+# SWE-MERA Stage 2
 
 Participants provide:
 
