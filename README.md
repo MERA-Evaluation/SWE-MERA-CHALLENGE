@@ -5,7 +5,7 @@
 **Fresh, uncontaminated real-world software engineering tasks across Go, Python, PHP, and more.**
 
 <p>
-  <img alt="runner" src="https://img.shields.io/badge/runner-Harbor%200.22.0-6e40c9?style=flat-square&labelColor=0d1117">
+  <img alt="runner" src="https://img.shields.io/badge/runner-Harbor%200.21.0-6e40c9?style=flat-square&labelColor=0d1117">
   <img alt="metric" src="https://img.shields.io/badge/metric-pass%401-1a7f37?style=flat-square&labelColor=0d1117">
   <img alt="tasks" src="https://img.shields.io/badge/tasks-49-1f6feb?style=flat-square&labelColor=0d1117">
   <img alt="languages" src="https://img.shields.io/badge/Go%2018%20·%20Python%2016%20·%20PHP%2015-24292f?style=flat-square&labelColor=0d1117">
@@ -49,7 +49,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 uv run --python .venv/bin/python -- harbor --version
 ```
 
-The last command must print `0.22.0`.
+The last command must print `0.21.0`.
 
 <details>
 <summary>If uv or Python 3.12 is not installed</summary>
@@ -180,7 +180,7 @@ docker run --rm --platform=linux/amd64 hello-world
 | :-- | :-- |
 | `docker: command not found` | Install Docker Engine or Docker Desktop, then rerun the checks above. |
 | Cannot connect to the Docker daemon | Start Docker and wait until `docker info` succeeds. |
-| `harbor --version` prints something other than `0.22.0` | Rerun the uv setup commands from [Install](#install). |
+| `harbor --version` prints something other than `0.21.0` | Rerun the uv setup commands from [Install](#install). |
 | `no match for platform in manifest` | Enable `linux/amd64` emulation or use an `x86_64` machine. |
 | `range of CPUs is from 0.01 to N` | Give Docker at least two cores per concurrent task. |
 | The oracle reward is not `1` | Confirm that Docker is running and enough disk space is available. |
@@ -238,13 +238,27 @@ uv run --python .venv/bin/python -- harbor run \
 
 #### Custom agent
 
-Replace `your_package.agent:CustomAgent` with the agent's Python import path.
+This repository includes `custom_agent.react_bash_agent:ReactBashAgent`, a
+minimal ReAct-style agent with a single `bash` tool. Model requests are sent
+directly from the Harbor host to an OpenAI-compatible endpoint, while Harbor
+executes bash commands inside the isolated task container at `/testbed`.
+
+For a self-hosted vLLM server listening on `127.0.0.1:8000`, add the following
+variables to `.env`:
+
+```dotenv
+REACT_AGENT_API_KEY=dummy
+REACT_AGENT_BASE_URL=http://127.0.0.1:8000/v1
+```
+
+The model name after the `openai/` prefix must match the model name returned by
+vLLM's `/v1/models` endpoint:
 
 ```bash
-uv run --python .venv/bin/python -- harbor run \
+PYTHONPATH="$PWD" uv run --python .venv/bin/python -- harbor run \
   --path tasks \
-  --agent your_package.agent:CustomAgent \
-  --model openai/gpt-5.4 \
+  --agent custom_agent.react_bash_agent:ReactBashAgent \
+  --model openai/qwen35-9b-chat \
   --env-file .env \
   --jobs-dir jobs/custom-agent \
   --n-attempts 1 \
@@ -252,7 +266,8 @@ uv run --python .venv/bin/python -- harbor run \
   --yes
 ```
 
-The package must be importable from `.venv`. Pass custom constructor arguments with the repeatable `--agent-kwarg key=value` option.
+The custom agent package is made importable through `PYTHONPATH`. Constructor
+arguments can be supplied with repeatable `--agent-kwarg key=value` options.
 
 </details>
 

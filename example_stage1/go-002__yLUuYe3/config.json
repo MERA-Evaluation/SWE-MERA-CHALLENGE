@@ -1,0 +1,13 @@
+{
+    "task": {
+        "path": "tasks/go-002",
+        "source": "tasks"
+    },
+    "trial_name": "go-002__yLUuYe3",
+    "trials_dir": "jobs/gpt-5.6-luna/2026-09-01__22-02-47",
+    "agent": {
+        "name": "mini-swe-agent",
+        "model_name": "openrouter/openai/gpt-5.6-luna"
+    },
+    "job_id": "abe31f4e-0e04-42e6-beda-7f01cd8bec28"
+}
