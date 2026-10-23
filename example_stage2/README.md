@@ -25,7 +25,7 @@ This limit is independent of model startup and task timeouts in `task.toml`.
 From the repository root, run the public tasks locally with:
 
 ```bash
-./example_stage2/run.sh --username pavel
+./example_stage2/run.sh --username user_id
 ```
 
 `--username` is mandatory and names Docker resources and the default output
@@ -40,7 +40,7 @@ To override paths or concurrency:
 SWE_MERA_TASKS_DIR="$PWD/tasks" \
 SWE_MERA_JOBS_DIR="$PWD/jobs/stage2-local" \
 SWE_MERA_N_CONCURRENT=2 \
-./example_stage2/run.sh --username pavel
+./example_stage2/run.sh --username user_id
 ```
 
 Without overrides, tasks come from `<project>/tasks` and results go to
