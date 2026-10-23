@@ -13,6 +13,12 @@
 
 </div>
 
+## Stage 2 Started! 
+Evaluation Environment:
+All the tasks will run on **NVIDIA PRO 6000**, a task will be given **2 CPU**, **8 Gb RAM** and **48 GB VRAM**. Your submission will have up to 4 hours to download a model and up to 30 minutes per each task.
+
+More details are here: [README.md](./example_stage2/README.md)
+
 ## Setup
 
 ### Requirements
