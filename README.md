@@ -16,10 +16,10 @@
 ## Stage 1
 **Stage 1** has already finished.
 
-More details are here: [README.md](./example_stage1/README.md)
+More details are here: [example_stage1/README.md](./example_stage1/README.md)
 
 ## Stage 2
 **Stage 2** has Started! Evaluation Environment:
-All the tasks will run on **NVIDIA PRO 6000**, a task will be given **2 CPU**, **8 Gb RAM** and **48 GB VRAM**. Your submission will have up to 4 hours to download a model and up to 30 minutes per each task.
+All the tasks will run on **NVIDIA PRO 6000**, a task will be given **4 Gb RAM**, **1-2 CPU**, and **96 GB VRAM** (**3 Data Parallel** in **vLLM**). Your submission will have up to 4 hours to download a model and up to 30 minutes per each task.
 
-More details are here: [README.md](./example_stage2/README.md)
+More details are here: [example_stage2/README.md](./example_stage2/README.md)
