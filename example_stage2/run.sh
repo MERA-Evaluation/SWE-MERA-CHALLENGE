@@ -27,7 +27,7 @@ read from submission.yaml. Use 1-64 lowercase letters, digits, '.', '_' or
 Optional environment variables:
   SWE_MERA_TASKS_DIR       Task directory (default: <project>/tasks)
   SWE_MERA_JOBS_DIR        Output directory (default: <project>/jobs/stage2/NAME)
-  SWE_MERA_N_CONCURRENT    Concurrent tasks (default: 10)
+  SWE_MERA_N_CONCURRENT    Concurrent tasks (default: 20)
   SWE_MERA_DOCKER_GATEWAY  API bind address (default: 127.0.0.1)
   SWE_MERA_MODEL_PORT      API port (default: 8000)
 HELP
@@ -128,7 +128,7 @@ SWE_MERA_TASKS_DIR="${SWE_MERA_TASKS_DIR:-${PROJECT_DIR}/tasks}"
 SWE_MERA_JOBS_DIR="${SWE_MERA_JOBS_DIR:-${PROJECT_DIR}/jobs/stage2/${USERNAME}}"
 [[ -d "$SWE_MERA_TASKS_DIR" ]] || fail "task directory is missing: $SWE_MERA_TASKS_DIR"
 
-N_CONCURRENT="${SWE_MERA_N_CONCURRENT:-10}"
+N_CONCURRENT="${SWE_MERA_N_CONCURRENT:-20}"
 [[ "$N_CONCURRENT" =~ ^[1-9][0-9]*$ ]] || fail \
     "SWE_MERA_N_CONCURRENT must be a positive integer"
 
